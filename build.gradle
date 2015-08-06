@@ -1,0 +1,152 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies { classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.0' }
+}
+
+repositories {
+    mavenCentral()
+    jcenter()
+}
+
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'maven'
+apply plugin: 'eclipse'
+apply plugin: 'signing'
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'maven-publish'
+
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+group = 'com.ullink.slack'
+archivesBaseName = 'slack4gerrit'
+version = '0.1.0-SNAPSHOT'
+
+jar {
+    archiveName = 'slack4gerrit.jar'
+    manifest { attributes 'Main-Class': 'com.ullink.slack.review.Connector' }
+}
+
+task dist(dependsOn: 'assemble', type: Zip) {
+    from ('/') {
+        include "slack4gerrit.properties"
+        into ('/')
+    }
+    from ('script') {
+        include "*.*"
+        into ('/')
+    }
+    from (jar.outputs.files) { into ('lib') }
+    from (configurations.runtime) { into ('lib') }
+}
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts { archives javadocJar, sourcesJar }
+
+signing {
+    required false
+    sign configurations.archives
+}
+
+def pomConfig = {
+    name 'Slack 4 Gerrit'
+    description 'A Slack Bot to share your gerrit review requests'
+    url 'https://github.com/Ullink/slack4gerrit'
+    licenses {
+        license {
+            name 'Apache-2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0'
+        }
+    }
+    developers {
+        developer {
+            id 'bcorne'
+            name 'Benoit Corne'
+            email 'benoit.corne@gmail.com'
+        }
+    }
+    contributors {
+        contributor {
+            name 'CappCorp'
+            email 'cappcorp@gmail.com'
+            url 'https://github.com/CappCorp'
+        }
+    }
+    scm {
+        connection 'scm:git:git@github.com:Ullink/slack4gerrit.git'
+        developerConnection 'scm:git:git@github.com:Ullink/slack4gerrit.git'
+        url 'https://github.com/Ullink/slack4gerrit'
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+            pom.withXml {
+                asNode().children().last() + pomConfig
+            }
+        }
+    }
+}
+
+bintray {
+    if (this.hasProperty('bintray_user')) {
+        user = bintray_user //this usually comes from gradle.properties file in ~/.gradle
+        key = bintray_api_key //this usually comes from gradle.properties file in ~/.gradle
+
+        publications = ['mavenJava'] //When uploading Maven-based publication files
+        dryRun = false //Whether to run this as dry-run, without deploying
+        publish = true //If version should be auto published after an upload
+        pkg {
+            repo = 'maven'
+            name = 'com.ullink.slack:slack4gerrit'
+            desc = 'slack 4 gerrit package!'
+            websiteUrl = 'https://github.com/Ullink/slack4gerrit'
+            issueTrackerUrl = 'https://github.com/Ullink/slack4gerrit/issues'
+            vcsUrl = 'https://github.com/Ullink/slack4gerrit.git'
+            licenses = ['Apache-2.0']
+            labels = ['slack']
+            publicDownloadNumbers = true
+            version {
+                name = project.version //Bintray logical version name
+                desc = ''
+                mavenCentralSync {
+                    sync = true //Optional (true by default). Determines whether to sync the version to Maven Central.
+                    user = ossrhUsername //OSS user token
+                    password = ossrhPassword //OSS user password
+                    close = '1' //Optional property. By default the staging repository is closed and artifacts are released to Maven Central. You can optionally turn this behaviour off (by puting 0 as value) and release the version manually.
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    compile 'com.ullink.slack:simpleslackapi:0.4.4'
+    compile 'org.glassfish.tyrus.bundles:tyrus-standalone-client:1.8.3'
+    compile 'com.googlecode.json-simple:json-simple:1.1'
+    compile 'org.slf4j:slf4j-simple:1.7.7'
+    compile 'org.apache.httpcomponents:httpclient:4.4'
+    compile 'com.google.guava:guava:18.0'
+    compile 'org.mapdb:mapdb:1.0.7'
+    compile 'com.google.inject:guice:4.0-beta5'
+    testCompile 'junit:junit:4.11'
+    testCompile 'org.jmockit:jmockit:1.13'
+}
