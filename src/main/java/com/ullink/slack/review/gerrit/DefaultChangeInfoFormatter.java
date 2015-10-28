@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+
+import com.google.common.html.HtmlEscapers;
 import com.ullink.slack.review.Constants;
 import com.ullink.slack.review.gerrit.ChangeInfo.IssuePriority;
 import com.ullink.slack.simpleslackapi.SlackAttachment;
@@ -31,7 +33,8 @@ public class DefaultChangeInfoFormatter implements ChangeInfoFormatter
         SlackAttachment attachment = new SlackAttachment();
         attachment.addMarkdownIn("fields");
         attachment.addMarkdownIn("pretext");
-        attachment.pretext = "*<" + gerritURL + changeId + "/" + "|" + changeInfo.getSubject() + " (#" + changeId + ")>* *owner :* " + formatOwnerInfo(changeInfo, session);
+        String subject = HtmlEscapers.htmlEscaper().escape(changeInfo.getSubject());
+        attachment.pretext = "*<" + gerritURL + changeId + "/" + "|" + subject + " (#" + changeId + ")>* *owner :* " + formatOwnerInfo(changeInfo, session);
         if (changeInfo.getCherryPickedFrom() != null)
         {
             attachment.pretext += " *Cherry picked from :* *<" + gerritURL + changeInfo.getCherryPickedFrom() + "/" + "| #" + changeInfo.getCherryPickedFrom() + ">*";
