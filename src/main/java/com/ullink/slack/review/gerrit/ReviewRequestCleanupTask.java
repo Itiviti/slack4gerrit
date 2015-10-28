@@ -26,7 +26,7 @@ public class ReviewRequestCleanupTask implements Runnable
         Collection<String> pendingChanges = reviewRequestService.getAllRequestedReviews();
         for (String changeId : pendingChanges)
         {
-            if (gerritChangeInfoService.isMerged(changeId))
+            if (gerritChangeInfoService.isMergedOrAbandoned(changeId))
             {
                 Collection<ReviewRequest> reviewRequests = reviewRequestService.getReviewRequests(changeId);
                 for (ReviewRequest reviewRequest : reviewRequests)
