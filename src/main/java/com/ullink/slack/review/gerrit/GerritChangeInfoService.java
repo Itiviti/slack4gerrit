@@ -139,7 +139,7 @@ public class GerritChangeInfoService
         }
     }
 
-    public boolean isMerged(String changeId)
+    public boolean isMergedOrAbandoned(String changeId)
     {
         try
         {
@@ -149,7 +149,7 @@ public class GerritChangeInfoService
             JSONParser parser = new JSONParser();
             JSONObject jsonObj = (JSONObject) parser.parse(json);
             String status = (String) jsonObj.get("status");
-            return "MERGED".equals(status);
+            return "MERGED".equals(status) || "ABANDONED".equals(status);
         }
         catch (Exception e)
         {
