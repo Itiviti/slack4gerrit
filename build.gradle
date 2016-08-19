@@ -20,6 +20,7 @@ apply plugin: 'eclipse'
 apply plugin: 'signing'
 apply plugin: 'com.jfrog.bintray'
 apply plugin: 'maven-publish'
+apply plugin: 'distribution'
 
 sourceCompatibility = 1.7
 targetCompatibility = 1.7
@@ -135,6 +136,20 @@ bintray {
                     close = '1' //Optional property. By default the staging repository is closed and artifacts are released to Maven Central. You can optionally turn this behaviour off (by puting 0 as value) and release the version manually.
                 }
             }
+        }
+    }
+}
+
+distributions {
+    main {
+        baseName = 'slack4gerrit'
+        contents {
+            into ('lib') {
+                from { configurations.compile }
+                from { jar.getOutputs()}
+            }
+            from { 'script' }
+            from { 'slack4gerrit.properties' }
         }
     }
 }
