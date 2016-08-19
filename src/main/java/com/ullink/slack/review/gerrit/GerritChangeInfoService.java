@@ -10,9 +10,10 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.common.base.Function;
 import com.google.common.net.UrlEscapers;
 import com.google.common.util.concurrent.Futures;
@@ -55,22 +56,14 @@ public class GerritChangeInfoService
         @Override
         public JIRAInfo apply(String input)
         {
-            JSONParser parser = new JSONParser();
-            try
-            {
-                JSONObject obj = (JSONObject) parser.parse(input);
-                JSONObject fieldsJSON = (JSONObject) obj.get("fields");
-                JSONObject priorityJSON = (JSONObject) fieldsJSON.get("priority");
-                String priority = (String) priorityJSON.get("name");
-                JSONObject issueTypeJSON = (JSONObject) fieldsJSON.get("issuetype");
-                String issueType = (String) issueTypeJSON.get("name");
-                JIRAInfo toReturn = new JIRAInfo(IssuePriority.fromString(priority), IssueType.fromString(issueType), jiraId);
-                return toReturn;
-            }
-            catch (ParseException e)
-            {
-                return null;
-            }
+            JsonParser parser = new JsonParser();
+            JsonObject obj = parser.parse(input).getAsJsonObject();
+            JsonObject fieldsJSON = obj.get("fields").getAsJsonObject();
+            JsonElement priorityNameElement = fieldsJSON.get("priority").getAsJsonObject().get("name");
+            String priority = priorityNameElement != null ? priorityNameElement.getAsString() : null;
+            JsonElement issueTypeNameElement = fieldsJSON.get("issuetype").getAsJsonObject().get("name");
+            String issueType = issueTypeNameElement != null ? issueTypeNameElement.getAsString() : null;
+            return new JIRAInfo(IssuePriority.fromString(priority), IssueType.fromString(issueType), jiraId);
         }
 
     }
@@ -146,9 +139,10 @@ public class GerritChangeInfoService
             ListenableFuture<String> jsonChangeInfoHolder = HttpHelper.getAsyncFromHttp(new URL(gerritURL + "changes/" + changeId + "/detail"));
             String json = jsonChangeInfoHolder.get(20000, TimeUnit.MILLISECONDS);
             json = json.substring(4);
-            JSONParser parser = new JSONParser();
-            JSONObject jsonObj = (JSONObject) parser.parse(json);
-            String status = (String) jsonObj.get("status");
+            JsonParser parser = new JsonParser();
+            JsonObject jsonObj = parser.parse(json).getAsJsonObject();
+            JsonElement statusElement = jsonObj.get("status");
+            String status = statusElement != null ? statusElement.getAsString() : null;
             return "MERGED".equals(status) || "ABANDONED".equals(status);
         }
         catch (Exception e)
@@ -169,9 +163,10 @@ public class GerritChangeInfoService
                 return false;
             }
             json = json.substring(4);
-            JSONParser parser = new JSONParser();
-            JSONObject jsonObj = (JSONObject) parser.parse(json);
-            String state = (String) jsonObj.get("state");
+            JsonParser parser = new JsonParser();
+            JsonObject jsonObj = parser.parse(json).getAsJsonObject();
+            JsonElement stateElement = jsonObj.get("state");
+            String state = stateElement != null ? stateElement.getAsString() : null;
             return "ACTIVE".equals(state);
         }
         catch (Exception e)

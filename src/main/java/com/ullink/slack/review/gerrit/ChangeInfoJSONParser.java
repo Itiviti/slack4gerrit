@@ -3,13 +3,16 @@ package com.ullink.slack.review.gerrit;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import utils.GsonHelper;
 
 public class ChangeInfoJSONParser
 {
@@ -30,31 +33,22 @@ public class ChangeInfoJSONParser
     ChangeInfo parse() throws java.text.ParseException
     {
         LOGGER.debug("parsing ChangeInfo : " + changeInfoJSON);
-        JSONParser parser = new JSONParser();
-        JSONObject obj = null;
+        JsonParser parser = new JsonParser();
+        JsonObject obj = parser.parse(changeInfoJSON).getAsJsonObject();
 
-        try
-        {
-            obj = (JSONObject) parser.parse(changeInfoJSON);
-        }
-        catch (ParseException e)
-        {
-            e.printStackTrace();
-        }
+        String project = GsonHelper.getStringOrNull(obj.get("project"));
+        String branch = GsonHelper.getStringOrNull(obj.get("branch"));
+        String subject = GsonHelper.getStringOrNull(obj.get("subject"));
+        String created = GsonHelper.getStringOrNull(obj.get("created"));
+        String updated = GsonHelper.getStringOrNull(obj.get("updated"));
+        String changeId = GsonHelper.getStringOrNull(obj.get("change_id"));
+        String id = GsonHelper.getStringOrNull(obj.get("id"));
+        Long insertion = GsonHelper.getLongOrNull(obj.get("insertions"));
+        Long deletion = GsonHelper.getLongOrNull(obj.get("deletions"));
 
-        String project = (String) obj.get("project");
-        String branch = (String) obj.get("branch");
-        String subject = (String) obj.get("subject");
-        String created = (String) obj.get("created");
-        String updated = (String) obj.get("updated");
-        String changeId = (String) obj.get("change_id");
-        String id = (String) obj.get("id");
-        Long insertion = (Long) obj.get("insertions");
-        Long deletion = (Long) obj.get("deletions");
-
-        JSONObject ownerJSON = (JSONObject) obj.get("owner");
-        String ownerName = (String) ownerJSON.get("name");
-        String ownerEmail = (String) ownerJSON.get("email");
+        JsonObject ownerJSON = obj.get("owner").getAsJsonObject();
+        String ownerName = GsonHelper.getStringOrNull(ownerJSON.get("name"));
+        String ownerEmail = GsonHelper.getStringOrNull(ownerJSON.get("email"));
 
         ChangeInfo changeInfo = new ChangeInfo();
         changeInfo.setBranch(branch);
@@ -71,24 +65,24 @@ public class ChangeInfoJSONParser
 
         // collecting reviews value
 
-        JSONObject labelsJSON = (JSONObject) obj.get("labels");
-        for (Object label : labelsJSON.keySet())
+        JsonObject labelsJSON = obj.get("labels").getAsJsonObject();
+        for (Map.Entry<String,JsonElement> labelEntry : labelsJSON.entrySet())
         {
-            String labelName = (String) label;
+            String labelName = labelEntry.getKey();
             Set<Review> reviewSet = new HashSet<Review>();
             changeInfo.getReviews().put(labelName, reviewSet);
-            JSONObject reviewGroupJSON = (JSONObject) labelsJSON.get(labelName);
-            JSONArray allReviewsJSONArray = (JSONArray) reviewGroupJSON.get("all");
+            JsonObject reviewGroupJSON = labelEntry.getValue().getAsJsonObject();
+            JsonArray allReviewsJSONArray = GsonHelper.getJsonArrayOrNull(reviewGroupJSON.get("all"));
 
             if (allReviewsJSONArray != null)
             {
-                for (Object r : allReviewsJSONArray)
+                for (JsonElement reviewElement : allReviewsJSONArray)
                 {
-                    JSONObject reviewJSON = (JSONObject) r;
-                    Long value = (Long) reviewJSON.get("value");
+                    JsonObject reviewJSON = reviewElement.getAsJsonObject();
+                    Long value = GsonHelper.getLongOrNull(reviewJSON.get("value"));
                     if (value != null && value.intValue() != 0)
                     { // if value is null, no review for this person
-                        String name = (String) reviewJSON.get("name");
+                        String name = GsonHelper.getStringOrNull(reviewJSON.get("name"));
                         try
                         {
                             name = new String(name.getBytes(),"UTF-8");
@@ -98,7 +92,7 @@ public class ChangeInfoJSONParser
                             // TODO Auto-generated catch block
                             e.printStackTrace();
                         }
-                        String email = (String) reviewJSON.get("email");
+                        String email = GsonHelper.getStringOrNull(reviewJSON.get("email"));
                         Review review = new Review();
                         review.setReviewer(name);
                         review.setReviewValue(value.intValue());
@@ -112,17 +106,9 @@ public class ChangeInfoJSONParser
 
         // extracting commit message
         LOGGER.debug("parsing Commit message info : " + commitMessageJSON);
-        parser = new JSONParser();
-        try
-        {
-            obj = (JSONObject) parser.parse(commitMessageJSON);
-        }
-        catch (ParseException e)
-        {
-            e.printStackTrace();
-        }
-
-        String message = (String) obj.get("message");
+        parser = new JsonParser();
+        obj = parser.parse(commitMessageJSON).getAsJsonObject();
+        String message = GsonHelper.getStringOrNull(obj.get("message"));
         changeInfo.setCommitMessage(message);
         // getting the JIRA
         int jiraPos = message.indexOf("Issue:");

@@ -16,6 +16,7 @@ import com.ullink.slack.simpleslackapi.SlackMessageHandle;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.SlackUser;
 import com.ullink.slack.simpleslackapi.impl.SlackChatConfiguration;
+import com.ullink.slack.simpleslackapi.replies.SlackMessageReply;
 
 class MessageHandler implements Runnable
 {
@@ -114,9 +115,9 @@ class MessageHandler implements Runnable
                     for (String channelId : listeningChannels)
                     {
                         SlackChannel channel = session.findChannelById(channelId);
-                        SlackMessageHandle handle = session.sendMessage(channel, comment, attachment, SlackChatConfiguration.getConfiguration().asUser());
+                        SlackMessageHandle<SlackMessageReply> handle = session.sendMessage(channel, comment, attachment, SlackChatConfiguration.getConfiguration().asUser());
                         ReviewRequest previousRequest = reviewRequestService.getReviewRequest(channel.getId(), changeId);
-                        ReviewRequest newRequest = new ReviewRequest(handle.getSlackReply().getTimestamp(), changeId, channel.getId());
+                        ReviewRequest newRequest = new ReviewRequest(handle.getReply().getTimestamp(), changeId, channel.getId());
                         reviewRequestService.registerReviewRequest(newRequest);
                         if (previousRequest != null)
                         {

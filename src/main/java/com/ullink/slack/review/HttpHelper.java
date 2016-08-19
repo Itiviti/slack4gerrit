@@ -85,7 +85,11 @@ public class HttpHelper
         HttpClient client = HttpClientBuilder.create().build();
         HttpGet request = new HttpGet(url.toExternalForm());
         HttpResponse response = client.execute(request, context);
-        return CharStreams.toString(new InputStreamReader(response.getEntity().getContent()));
+        InputStreamReader streamReader = new InputStreamReader(response.getEntity().getContent());
+        String data = CharStreams.toString(streamReader);
+        streamReader.close();
+        return data;
+        
     }
 
 }

@@ -34,12 +34,12 @@ public class DefaultChangeInfoFormatter implements ChangeInfoFormatter
         attachment.addMarkdownIn("fields");
         attachment.addMarkdownIn("pretext");
         String subject = HtmlEscapers.htmlEscaper().escape(changeInfo.getSubject());
-        attachment.pretext = "*<" + gerritURL + changeId + "/" + "|" + subject + " (#" + changeId + ")>* *owner :* " + formatOwnerInfo(changeInfo, session);
+        String pretext = "*<" + gerritURL + changeId + "/" + "|" + subject + " (#" + changeId + ")>* *owner :* " + formatOwnerInfo(changeInfo, session);
         if (changeInfo.getCherryPickedFrom() != null)
         {
-            attachment.pretext += " *Cherry picked from :* *<" + gerritURL + changeInfo.getCherryPickedFrom() + "/" + "| #" + changeInfo.getCherryPickedFrom() + ">*";
+            pretext += " *Cherry picked from :* *<" + gerritURL + changeInfo.getCherryPickedFrom() + "/" + "| #" + changeInfo.getCherryPickedFrom() + ">*";
         }
-
+        attachment.setPretext(pretext);
         attachment.addField(null, formatProjectInfo(changeInfo) + " " + formatLastUpdatedInfo(changeInfo), false);
         String issuesDescription = formatRelatedIssues(changeInfo);
         if (issuesDescription != null)

@@ -38,11 +38,11 @@ public class Connector
         {
             String proxyURL = parameters.getProperty(Constants.PROXY_HOST);
             int proxyPort = Integer.parseInt(parameters.getProperty(Constants.PROXY_PORT, "80"));
-            session = SlackSessionFactory.createWebSocketSlackSession(parameters.getProperty(Constants.BOT_TOKEN), Proxy.Type.HTTP, proxyURL, proxyPort);
+            session = SlackSessionFactory.getSlackSessionBuilder(parameters.getProperty(Constants.BOT_TOKEN)).withProxy(Proxy.Type.HTTP, proxyURL, proxyPort).build();
         }
         else
         {
-            session = SlackSessionFactory.createWebSocketSlackSession(parameters.getProperty(Constants.BOT_TOKEN));
+            session = SlackSessionFactory.getSlackSessionBuilder(parameters.getProperty(Constants.BOT_TOKEN)).build();
         }
         ReviewRequestService reviewRequestService = Connector.injector.getProvider(ReviewRequestService.class).get();
         GerritChangeInfoService gerritChangeInfoService = Connector.injector.getProvider(GerritChangeInfoService.class).get();
@@ -50,9 +50,6 @@ public class Connector
         scheduledExecutor.scheduleAtFixedRate(new ReviewRequestCleanupTask(reviewRequestService, gerritChangeInfoService, session), 1, 5, TimeUnit.MINUTES);
         session.connect();
 
-        while (true)
-        {
-            Thread.sleep(1000);
-        }
+        Thread.sleep(Long.MAX_VALUE);
     }
 }

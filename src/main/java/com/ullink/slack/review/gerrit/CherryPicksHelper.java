@@ -1,11 +1,12 @@
 package com.ullink.slack.review.gerrit;
 
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-import org.json.simple.parser.ParseException;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import utils.GsonHelper;
 
 public class CherryPicksHelper
 {
@@ -16,24 +17,17 @@ public class CherryPicksHelper
     {
         LOGGER.debug("parsing Cherry pick request : " + cherryPickRequestJSONResponse);
         cherryPickRequestJSONResponse = cherryPickRequestJSONResponse.substring(4);
-        JSONParser parser = new JSONParser();
+        JsonParser parser = new JsonParser();
         long lowestLegacyId = Long.MAX_VALUE;
-        try
+        JsonArray obj = parser.parse(cherryPickRequestJSONResponse).getAsJsonArray();
+        for (JsonElement jsonElement : obj)
         {
-            JSONArray obj = (JSONArray) parser.parse(cherryPickRequestJSONResponse);
-            for (Object jsonChangeObj : obj)
+            JsonObject jsonChange = jsonElement.getAsJsonObject();
+            long cherryPickLegacyId = GsonHelper.getLongOrNull(jsonChange.get("_number"));
+            if (cherryPickLegacyId < lowestLegacyId)
             {
-                JSONObject jsonChange = (JSONObject) jsonChangeObj;
-                long cherryPickLegacyId = (Long) jsonChange.get("_number");
-                if (cherryPickLegacyId < lowestLegacyId)
-                {
-                    lowestLegacyId = cherryPickLegacyId;
-                }
+                lowestLegacyId = cherryPickLegacyId;
             }
-        }
-        catch (ParseException e)
-        {
-            e.printStackTrace();
         }
         return Long.toString(lowestLegacyId);
     }
