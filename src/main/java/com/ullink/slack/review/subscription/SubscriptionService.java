@@ -2,7 +2,7 @@ package com.ullink.slack.review.subscription;
 
 import java.util.Collection;
 
-public interface ProjectSubscriptionService
+public interface SubscriptionService
 {
     Collection<String> getListeningChannels(String projectName);
     Collection<String> getChannelSubscriptions(String channelId);

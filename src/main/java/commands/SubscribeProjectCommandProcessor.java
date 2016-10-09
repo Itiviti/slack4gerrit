@@ -7,32 +7,32 @@ import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
-import com.ullink.slack.review.subscription.ProjectSubscriptionService;
+import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackChannel;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 import com.ullink.slack.simpleslackapi.impl.SlackChatConfiguration;
 
 @Singleton
-public class UnsubscribeReviewCommandProcessor implements SlackBotCommandProcessor
+public class SubscribeProjectCommandProcessor implements SlackBotCommandProcessor
 {
     @Inject
-    private ExecutorService            executor;
-    @Inject
-    private ProjectSubscriptionService projectSubscriptionService;
-    @Inject
     private GerritChangeInfoService    gerritChangeInfoService;
+    @Inject
+    private SubscriptionService subscriptionService;
+    @Inject
+    private ExecutorService            executor;
 
-    private static Pattern             UNSUBSCRIBE_REVIEW_PATTERN = Pattern.compile("!unsubscribereview\\s(.*)");
+    private static Pattern SUBSCRIBE_REVIEW_PROJECT_PATTERN = Pattern.compile("!subscribereview\\s(.*)");
 
-    private class UnsubscriptionMessageHandler implements Runnable
+    private class SubscriptionMessageHandler implements Runnable
     {
 
         SlackChannel channelToSubscribe;
         String       projectId;
         SlackSession session;
 
-        public UnsubscriptionMessageHandler(SlackChannel channelToSubscribe, String projectId, SlackSession session)
+        public SubscriptionMessageHandler(SlackChannel channelToSubscribe, String projectId, SlackSession session)
         {
             this.channelToSubscribe = channelToSubscribe;
             this.projectId = projectId;
@@ -49,8 +49,8 @@ public class UnsubscribeReviewCommandProcessor implements SlackBotCommandProcess
                     session.sendMessage(channelToSubscribe, "Could not find project name *`" + projectId + "`*, check that this project name is valid and that it is active", null, SlackChatConfiguration.getConfiguration().asUser());
                     return;
                 }
-                projectSubscriptionService.unsubscribeOnProject(projectId, channelToSubscribe.getId());
-                session.sendMessage(channelToSubscribe, "This channel will not publish any more review requests from project *`" + projectId + "`*", null, SlackChatConfiguration.getConfiguration().asUser());
+                subscriptionService.subscribeOnProject(projectId, channelToSubscribe.getId());
+                session.sendMessage(channelToSubscribe, "This channel will now publish review requests from project *`" + projectId + "`*", null, SlackChatConfiguration.getConfiguration().asUser());
             }
             catch (IOException e)
             {
@@ -63,12 +63,12 @@ public class UnsubscribeReviewCommandProcessor implements SlackBotCommandProcess
     @Override
     public boolean process(String command, SlackMessagePosted event, SlackSession session)
     {
-        Matcher matcher = UNSUBSCRIBE_REVIEW_PATTERN.matcher(command);
+        Matcher matcher = SUBSCRIBE_REVIEW_PROJECT_PATTERN.matcher(command);
         if (matcher.matches())
         {
             String projectId = matcher.group(1);
             SlackChannel channel = event.getChannel();
-            executor.execute(new UnsubscriptionMessageHandler(channel, projectId, session));
+            executor.execute(new SubscriptionMessageHandler(channel, projectId, session));
             return true;
         }
         return false;

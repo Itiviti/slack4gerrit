@@ -9,8 +9,8 @@ import commands.ListReviewCommandProcessor;
 import commands.PublishReviewCommandProcessor;
 import commands.ReviewCommandProcessor;
 import commands.SlackBotCommandProcessor;
-import commands.SubscribeReviewCommandProcessor;
-import commands.UnsubscribeReviewCommandProcessor;
+import commands.SubscribeProjectCommandProcessor;
+import commands.UnsubscribeProjectCommandProcessor;
 
 public class ReviewMessageListener implements SlackMessagePostedListener
 {
@@ -22,8 +22,8 @@ public class ReviewMessageListener implements SlackMessagePostedListener
     {
         commandProcessors.add(Connector.injector.getInstance(ReviewCommandProcessor.class));
         commandProcessors.add(Connector.injector.getInstance(PublishReviewCommandProcessor.class));
-        commandProcessors.add(Connector.injector.getInstance(SubscribeReviewCommandProcessor.class));
-        commandProcessors.add(Connector.injector.getInstance(UnsubscribeReviewCommandProcessor.class));
+        commandProcessors.add(Connector.injector.getInstance(SubscribeProjectCommandProcessor.class));
+        commandProcessors.add(Connector.injector.getInstance(UnsubscribeProjectCommandProcessor.class));
         commandProcessors.add(Connector.injector.getInstance(ListReviewCommandProcessor.class));
     }
 

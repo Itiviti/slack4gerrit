@@ -15,7 +15,7 @@ import javax.inject.Singleton;
 import org.mapdb.DB;
 
 @Singleton
-public class ProjectSubscriptionImpl implements ProjectSubscriptionService
+public class SubscriptionImpl implements SubscriptionService
 {
     private Map<String, List<String>> projectSubscriptionMap;
     @Inject
@@ -24,7 +24,7 @@ public class ProjectSubscriptionImpl implements ProjectSubscriptionService
     private ReadWriteLock             lock = new ReentrantReadWriteLock();
 
     @Inject
-    public ProjectSubscriptionImpl(DB db)
+    public SubscriptionImpl(DB db)
     {
         projectSubscriptionMap = db.<String, List<String>> getTreeMap("ProjectSubscription");
     }
@@ -136,5 +136,4 @@ public class ProjectSubscriptionImpl implements ProjectSubscriptionService
             writeLock.unlock();
         }
     }
-
 }

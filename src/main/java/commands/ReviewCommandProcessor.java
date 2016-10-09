@@ -8,7 +8,7 @@ import javax.inject.Singleton;
 import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
-import com.ullink.slack.review.subscription.ProjectSubscriptionService;
+import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 
@@ -20,7 +20,7 @@ public class ReviewCommandProcessor implements SlackBotCommandProcessor
     @Inject
     private ReviewRequestService       reviewRequestService;
     @Inject
-    private ProjectSubscriptionService projectSubscriptionService;
+    private SubscriptionService subscriptionService;
     @Inject
     private GerritChangeInfoService    gerritChangeInfoService;
     @Inject
@@ -40,11 +40,11 @@ public class ReviewCommandProcessor implements SlackBotCommandProcessor
             {
                 if (event.getSender() != null)
                 {
-                    executor.execute(new MessageHandler(event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, projectSubscriptionService, gerritChangeInfoService, changeInfoDecorator));
+                    executor.execute(new MessageHandler(event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
                 }
                 else if (event.getBot() != null)
                 {
-                    executor.execute(new MessageHandler(event.getBot(), event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, projectSubscriptionService, gerritChangeInfoService, changeInfoDecorator));
+                    executor.execute(new MessageHandler(event.getBot(), event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
                 }
             }
             return true;
