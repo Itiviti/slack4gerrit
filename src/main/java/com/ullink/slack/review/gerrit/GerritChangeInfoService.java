@@ -175,4 +175,24 @@ public class GerritChangeInfoService
         }
         return false;
     }
+
+    public boolean userExists(String userId) throws IOException
+    {
+        ListenableFuture<String> jsonChangeInfoHolder = HttpHelper.getAsyncFromHttp(new URL(gerritURL + "accounts/" + UrlEscapers.urlPathSegmentEscaper().escape(userId)));
+        try
+        {
+            String json = jsonChangeInfoHolder.get(20000, TimeUnit.MILLISECONDS);
+            if ("NOT FOUND".equalsIgnoreCase(json.trim()))
+            {
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

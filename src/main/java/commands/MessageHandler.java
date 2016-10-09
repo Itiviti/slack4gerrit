@@ -106,13 +106,26 @@ class MessageHandler implements Runnable
                 if (changeInfo != null)
                 {
                     SlackAttachment attachment = changeInfoDecorator.createAttachment(changeId, changeInfo, session);
-                    Collection<String> listeningChannels = subscriptionService.getListeningChannels(changeInfo.getProject());
-                    if (!listeningChannels.contains(targetChannel.getId()))
+
+                    Collection<String> channelsListeningToProject = subscriptionService.getChannelsListeningToProject(changeInfo.getProject());
+                    if (!channelsListeningToProject.contains(targetChannel.getId()))
                     {
-                        listeningChannels = new ArrayList<String>(listeningChannels);
-                        listeningChannels.add(targetChannel.getId());
+                        channelsListeningToProject = new ArrayList<String>(channelsListeningToProject);
+                        channelsListeningToProject.add(targetChannel.getId());
                     }
-                    for (String channelId : listeningChannels)
+
+                    Collection<String> channelsListeningToUser = subscriptionService.getChannelsListeningToUser(changeInfo.getOwner());
+                    if (!channelsListeningToUser.contains(targetChannel.getId()))
+                    {
+                        channelsListeningToUser = new ArrayList<String>(channelsListeningToUser);
+                        channelsListeningToUser.add(targetChannel.getId());
+                    }
+
+                    Collection<String> channelsListening = new ArrayList<>(channelsListeningToProject);
+                    channelsListeningToUser.removeAll(channelsListeningToProject);
+                    channelsListening.addAll(channelsListeningToUser);
+
+                    for (String channelId : channelsListening)
                     {
                         SlackChannel channel = session.findChannelById(channelId);
                         SlackMessageHandle<SlackMessageReply> handle = session.sendMessage(channel, comment, attachment, SlackChatConfiguration.getConfiguration().asUser());
