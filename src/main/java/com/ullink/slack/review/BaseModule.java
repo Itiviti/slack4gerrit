@@ -14,8 +14,8 @@ import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.DefaultChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestServiceImpl;
-import com.ullink.slack.review.subscription.ProjectSubscriptionImpl;
-import com.ullink.slack.review.subscription.ProjectSubscriptionService;
+import com.ullink.slack.review.subscription.SubscriptionImpl;
+import com.ullink.slack.review.subscription.SubscriptionService;
 
 public class BaseModule extends AbstractModule
 {
@@ -49,7 +49,7 @@ public class BaseModule extends AbstractModule
         bind(String.class).annotatedWith(Names.named(Constants.JIRA_USER)).toInstance(properties.getProperty(Constants.JIRA_USER));
         bind(String.class).annotatedWith(Names.named(Constants.JIRA_PASSWORD)).toInstance(properties.getProperty(Constants.JIRA_PASSWORD));
         bind(ReviewRequestService.class).to(ReviewRequestServiceImpl.class);
-        bind(ProjectSubscriptionService.class).to(ProjectSubscriptionImpl.class);
+        bind(SubscriptionService.class).to(SubscriptionImpl.class);
         bind(ExecutorService.class).toInstance(Executors.newFixedThreadPool(8));
         bind(ChangeInfoFormatter.class).toInstance(changeFormatter);
     }

@@ -8,7 +8,7 @@ import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequest;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
-import com.ullink.slack.review.subscription.ProjectSubscriptionService;
+import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackAttachment;
 import com.ullink.slack.simpleslackapi.SlackBot;
 import com.ullink.slack.simpleslackapi.SlackChannel;
@@ -27,11 +27,11 @@ class MessageHandler implements Runnable
     private String                           comment = "";
     private final SlackSession               session;
     private final ReviewRequestService       reviewRequestService;
-    private final ProjectSubscriptionService projectSubscriptionService;
+    private final SubscriptionService subscriptionService;
     private final GerritChangeInfoService    gerritChangeInfoService;
     private final ChangeInfoFormatter        changeInfoDecorator;
 
-    MessageHandler(SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, ProjectSubscriptionService projectSubscriptionService,
+    MessageHandler(SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, SubscriptionService subscriptionService,
         GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
     {
         this.targetChannel = fromChannel;
@@ -40,12 +40,12 @@ class MessageHandler implements Runnable
         this.comment = comment;
         this.session = session;
         this.reviewRequestService = reviewRequestService;
-        this.projectSubscriptionService = projectSubscriptionService;
+        this.subscriptionService = subscriptionService;
         this.gerritChangeInfoService = gerritChangeInfoService;
         this.changeInfoDecorator = changeInfoDecorator;
     }
 
-    MessageHandler(SlackBot bot, SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, ProjectSubscriptionService projectSubscriptionService,
+    MessageHandler(SlackBot bot, SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, SubscriptionService subscriptionService,
         GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
     {
         this.targetChannel = fromChannel;
@@ -54,13 +54,13 @@ class MessageHandler implements Runnable
         this.comment = comment;
         this.session = session;
         this.reviewRequestService = reviewRequestService;
-        this.projectSubscriptionService = projectSubscriptionService;
+        this.subscriptionService = subscriptionService;
         this.gerritChangeInfoService = gerritChangeInfoService;
         this.changeInfoDecorator = changeInfoDecorator;
     }
 
     MessageHandler(SlackUser sender, String targetChannelName, SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService,
-        ProjectSubscriptionService projectSubscriptionService, GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
+                   SubscriptionService subscriptionService, GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
     {
         this.targetChannelName = targetChannelName;
         this.fromChannel = fromChannel;
@@ -68,12 +68,12 @@ class MessageHandler implements Runnable
         this.comment = comment;
         this.session = session;
         this.reviewRequestService = reviewRequestService;
-        this.projectSubscriptionService = projectSubscriptionService;
+        this.subscriptionService = subscriptionService;
         this.gerritChangeInfoService = gerritChangeInfoService;
         this.changeInfoDecorator = changeInfoDecorator;
     }
 
-    MessageHandler(SlackBot bot, String targetChannelName, SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, ProjectSubscriptionService projectSubscriptionService,
+    MessageHandler(SlackBot bot, String targetChannelName, SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, SubscriptionService subscriptionService,
         GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
     {
         this.targetChannelName = targetChannelName;
@@ -82,7 +82,7 @@ class MessageHandler implements Runnable
         this.comment = comment;
         this.session = session;
         this.reviewRequestService = reviewRequestService;
-        this.projectSubscriptionService = projectSubscriptionService;
+        this.subscriptionService = subscriptionService;
         this.gerritChangeInfoService = gerritChangeInfoService;
         this.changeInfoDecorator = changeInfoDecorator;
     }
@@ -106,13 +106,26 @@ class MessageHandler implements Runnable
                 if (changeInfo != null)
                 {
                     SlackAttachment attachment = changeInfoDecorator.createAttachment(changeId, changeInfo, session);
-                    Collection<String> listeningChannels = projectSubscriptionService.getListeningChannels(changeInfo.getProject());
-                    if (!listeningChannels.contains(targetChannel.getId()))
+
+                    Collection<String> channelsListeningToProject = subscriptionService.getChannelsListeningToProject(changeInfo.getProject());
+                    if (!channelsListeningToProject.contains(targetChannel.getId()))
                     {
-                        listeningChannels = new ArrayList<String>(listeningChannels);
-                        listeningChannels.add(targetChannel.getId());
+                        channelsListeningToProject = new ArrayList<String>(channelsListeningToProject);
+                        channelsListeningToProject.add(targetChannel.getId());
                     }
-                    for (String channelId : listeningChannels)
+
+                    Collection<String> channelsListeningToUser = subscriptionService.getChannelsListeningToUser(changeInfo.getOwner());
+                    if (!channelsListeningToUser.contains(targetChannel.getId()))
+                    {
+                        channelsListeningToUser = new ArrayList<String>(channelsListeningToUser);
+                        channelsListeningToUser.add(targetChannel.getId());
+                    }
+
+                    Collection<String> channelsListening = new ArrayList<>(channelsListeningToProject);
+                    channelsListeningToUser.removeAll(channelsListeningToProject);
+                    channelsListening.addAll(channelsListeningToUser);
+
+                    for (String channelId : channelsListening)
                     {
                         SlackChannel channel = session.findChannelById(channelId);
                         SlackMessageHandle<SlackMessageReply> handle = session.sendMessage(channel, comment, attachment, SlackChatConfiguration.getConfiguration().asUser());

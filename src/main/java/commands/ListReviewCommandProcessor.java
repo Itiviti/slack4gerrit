@@ -5,7 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import com.ullink.slack.review.subscription.ProjectSubscriptionService;
+import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 import com.ullink.slack.simpleslackapi.impl.SlackChatConfiguration;
@@ -14,7 +14,7 @@ import com.ullink.slack.simpleslackapi.impl.SlackChatConfiguration;
 public class ListReviewCommandProcessor implements SlackBotCommandProcessor
 {
     @Inject
-    private ProjectSubscriptionService projectSubscriptionService;
+    private SubscriptionService subscriptionService;
 
     private static Pattern             LIST_REVIEW_PATTERN = Pattern.compile("!listreviewsubscription");
 
@@ -25,7 +25,7 @@ public class ListReviewCommandProcessor implements SlackBotCommandProcessor
         int count = 0;
         if (matcher.matches())
         {
-            Collection<String> projects = projectSubscriptionService.getChannelSubscriptions(event.getChannel().getId());
+            Collection<String> projects = subscriptionService.getChannelSubscriptions(event.getChannel().getId());
             session.sendMessage(event.getChannel(), "This channel is listening to *`" + projects + "`*", null, SlackChatConfiguration.getConfiguration().asUser());
             return true;
         }

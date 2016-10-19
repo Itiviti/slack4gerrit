@@ -8,7 +8,7 @@ import javax.inject.Singleton;
 import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
-import com.ullink.slack.review.subscription.ProjectSubscriptionService;
+import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackChannel;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
@@ -21,7 +21,7 @@ public class PublishReviewCommandProcessor implements SlackBotCommandProcessor
     @Inject
     private ReviewRequestService       reviewRequestService;
     @Inject
-    private ProjectSubscriptionService projectSubscriptionService;
+    private SubscriptionService subscriptionService;
     @Inject
     private GerritChangeInfoService    gerritChangeInfoService;
     @Inject
@@ -47,12 +47,12 @@ public class PublishReviewCommandProcessor implements SlackBotCommandProcessor
             {
                 if (event.getSender() != null)
                 {
-                    executor.execute(new MessageHandler(event.getSender(), channelNameToPublish, event.getChannel(), changeId.trim(), comment, session, reviewRequestService, projectSubscriptionService, gerritChangeInfoService,
+                    executor.execute(new MessageHandler(event.getSender(), channelNameToPublish, event.getChannel(), changeId.trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService,
                         changeInfoDecorator));
                 }
                 else if (event.getBot() != null)
                 {
-                    executor.execute(new MessageHandler(event.getBot(), channelNameToPublish, event.getChannel(), changeId.trim(), comment, session, reviewRequestService, projectSubscriptionService, gerritChangeInfoService,
+                    executor.execute(new MessageHandler(event.getBot(), channelNameToPublish, event.getChannel(), changeId.trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService,
                         changeInfoDecorator));
                 }
             }
