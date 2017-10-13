@@ -1,4 +1,4 @@
-package commands;
+package jobs;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,15 +10,13 @@ import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequest;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
 import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackAttachment;
-import com.ullink.slack.simpleslackapi.SlackBot;
 import com.ullink.slack.simpleslackapi.SlackChannel;
 import com.ullink.slack.simpleslackapi.SlackMessageHandle;
 import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.SlackUser;
-import com.ullink.slack.simpleslackapi.impl.SlackChatConfiguration;
+import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
 import com.ullink.slack.simpleslackapi.replies.SlackMessageReply;
 
-class MessageHandler implements Runnable
+public class PublishMessageJob implements Runnable
 {
     private SlackChannel                     fromChannel;
     private SlackChannel                     targetChannel;
@@ -31,7 +29,7 @@ class MessageHandler implements Runnable
     private final GerritChangeInfoService    gerritChangeInfoService;
     private final ChangeInfoFormatter        changeInfoDecorator;
 
-    MessageHandler(SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, SubscriptionService subscriptionService,
+    public PublishMessageJob(SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, SubscriptionService subscriptionService,
         GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
     {
         this.targetChannel = fromChannel;
@@ -45,36 +43,8 @@ class MessageHandler implements Runnable
         this.changeInfoDecorator = changeInfoDecorator;
     }
 
-    MessageHandler(SlackBot bot, SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, SubscriptionService subscriptionService,
-        GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
-    {
-        this.targetChannel = fromChannel;
-        this.fromChannel = fromChannel;
-        this.changeId = changeId;
-        this.comment = comment;
-        this.session = session;
-        this.reviewRequestService = reviewRequestService;
-        this.subscriptionService = subscriptionService;
-        this.gerritChangeInfoService = gerritChangeInfoService;
-        this.changeInfoDecorator = changeInfoDecorator;
-    }
-
-    MessageHandler(SlackUser sender, String targetChannelName, SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService,
+    public PublishMessageJob(String targetChannelName, SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService,
                    SubscriptionService subscriptionService, GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
-    {
-        this.targetChannelName = targetChannelName;
-        this.fromChannel = fromChannel;
-        this.changeId = changeId;
-        this.comment = comment;
-        this.session = session;
-        this.reviewRequestService = reviewRequestService;
-        this.subscriptionService = subscriptionService;
-        this.gerritChangeInfoService = gerritChangeInfoService;
-        this.changeInfoDecorator = changeInfoDecorator;
-    }
-
-    MessageHandler(SlackBot bot, String targetChannelName, SlackChannel fromChannel, String changeId, String comment, SlackSession session, ReviewRequestService reviewRequestService, SubscriptionService subscriptionService,
-        GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
     {
         this.targetChannelName = targetChannelName;
         this.fromChannel = fromChannel;
@@ -102,7 +72,7 @@ class MessageHandler implements Runnable
             }
             else
             {
-                ChangeInfo changeInfo = gerritChangeInfoService.getChangeInfo(changeId, true);
+                ChangeInfo changeInfo = gerritChangeInfoService.getChangeInfo(changeId);
                 if (changeInfo != null)
                 {
                     SlackAttachment attachment = changeInfoDecorator.createAttachment(changeId, changeInfo, session);
@@ -110,14 +80,14 @@ class MessageHandler implements Runnable
                     Collection<String> channelsListeningToProject = subscriptionService.getChannelsListeningToProject(changeInfo.getProject());
                     if (!channelsListeningToProject.contains(targetChannel.getId()))
                     {
-                        channelsListeningToProject = new ArrayList<String>(channelsListeningToProject);
+                        channelsListeningToProject = new ArrayList<>(channelsListeningToProject);
                         channelsListeningToProject.add(targetChannel.getId());
                     }
 
                     Collection<String> channelsListeningToUser = subscriptionService.getChannelsListeningToUser(changeInfo.getOwner());
                     if (!channelsListeningToUser.contains(targetChannel.getId()))
                     {
-                        channelsListeningToUser = new ArrayList<String>(channelsListeningToUser);
+                        channelsListeningToUser = new ArrayList<>(channelsListeningToUser);
                         channelsListeningToUser.add(targetChannel.getId());
                     }
 

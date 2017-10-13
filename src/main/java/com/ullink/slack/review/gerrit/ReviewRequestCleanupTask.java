@@ -1,9 +1,10 @@
 package com.ullink.slack.review.gerrit;
 
 import java.util.Collection;
-import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequest;
+import java.util.concurrent.ExecutorService;
+import jobs.DeleteMessageJob;
+import jobs.RefreshMessageJob;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
-import com.ullink.slack.simpleslackapi.SlackChannel;
 import com.ullink.slack.simpleslackapi.SlackSession;
 
 public class ReviewRequestCleanupTask implements Runnable
@@ -12,12 +13,16 @@ public class ReviewRequestCleanupTask implements Runnable
     private ReviewRequestService    reviewRequestService;
     private GerritChangeInfoService gerritChangeInfoService;
     private SlackSession            session;
+    private ExecutorService executorService;
+    private ChangeInfoFormatter changeInfoDecorator;
 
-    public ReviewRequestCleanupTask(ReviewRequestService reviewRequestService, GerritChangeInfoService gerritChangeInfoService, SlackSession session)
+    public ReviewRequestCleanupTask(ReviewRequestService reviewRequestService, GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator, SlackSession session, ExecutorService executorService)
     {
         this.session = session;
         this.reviewRequestService = reviewRequestService;
         this.gerritChangeInfoService = gerritChangeInfoService;
+        this.executorService = executorService;
+        this.changeInfoDecorator = changeInfoDecorator;
     }
 
     @Override
@@ -28,16 +33,9 @@ public class ReviewRequestCleanupTask implements Runnable
         {
             if (gerritChangeInfoService.isMergedOrAbandoned(changeId))
             {
-                Collection<ReviewRequest> reviewRequests = reviewRequestService.getReviewRequests(changeId);
-                for (ReviewRequest reviewRequest : reviewRequests)
-                {
-                    SlackChannel channel = session.findChannelById(reviewRequest.getChannelId());
-                    if (channel != null)
-                    {
-                        session.deleteMessage(reviewRequest.getLastRequestTimestamp(), channel);
-                    }
-                }
-                reviewRequestService.deleteReviewRequest(changeId);
+                executorService.submit(new DeleteMessageJob(changeId, session, reviewRequestService));
+            } else {
+                executorService.submit(new RefreshMessageJob(changeId, session, reviewRequestService, gerritChangeInfoService, changeInfoDecorator));
             }
         }
     }

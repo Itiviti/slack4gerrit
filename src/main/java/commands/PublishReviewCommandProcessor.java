@@ -5,6 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import jobs.PublishMessageJob;
 import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
@@ -45,16 +46,7 @@ public class PublishReviewCommandProcessor implements SlackBotCommandProcessor
             SlackChannel channel = session.findChannelByName(channelNameToPublish);
             if (channel != null)
             {
-                if (event.getSender() != null)
-                {
-                    executor.execute(new MessageHandler(event.getSender(), channelNameToPublish, event.getChannel(), changeId.trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService,
-                        changeInfoDecorator));
-                }
-                else if (event.getBot() != null)
-                {
-                    executor.execute(new MessageHandler(event.getBot(), channelNameToPublish, event.getChannel(), changeId.trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService,
-                        changeInfoDecorator));
-                }
+                executor.execute(new PublishMessageJob(channelNameToPublish, event.getChannel(), changeId.trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
             }
             return true;
         }

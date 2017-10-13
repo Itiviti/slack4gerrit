@@ -11,7 +11,7 @@ import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackChannel;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
-import com.ullink.slack.simpleslackapi.impl.SlackChatConfiguration;
+import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
 
 @Singleton
 public class SubscribeProjectCommandProcessor implements SlackBotCommandProcessor

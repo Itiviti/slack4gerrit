@@ -5,6 +5,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import jobs.PublishMessageJob;
 import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
@@ -38,14 +39,7 @@ public class ReviewCommandProcessor implements SlackBotCommandProcessor
             String comment = matcher.group(4);
             for (int i = 0; i < changeIds.length; i++)
             {
-                if (event.getSender() != null)
-                {
-                    executor.execute(new MessageHandler(event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
-                }
-                else if (event.getBot() != null)
-                {
-                    executor.execute(new MessageHandler(event.getBot(), event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
-                }
+                executor.execute(new PublishMessageJob(event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
             }
             return true;
         }

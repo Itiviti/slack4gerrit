@@ -68,7 +68,7 @@ public class GerritChangeInfoService
 
     }
 
-    public ChangeInfo getChangeInfo(String changeId, boolean fetchJiraInfo) throws IOException
+    public ChangeInfo getChangeInfo(String changeId) throws IOException
     {
         ListenableFuture<String> jsonChangeInfoHolder = HttpHelper.getAsyncFromHttp(new URL(gerritURL + "changes/" + changeId + "/detail"));
         ListenableFuture<String> jsonCommitMessageHolder = HttpHelper.getAsyncFromHttp(new URL(gerritURL + "changes/" + changeId + "/revisions/current/commit"));
@@ -96,7 +96,7 @@ public class GerritChangeInfoService
                 changeInfo.setCherryPickedFrom(cherryPickId);
             }
 
-            if (changeInfo.getRelatedJira().size() > 0 && fetchJiraInfo)
+            if (changeInfo.getRelatedJira().size() > 0)
             {
 
                 List<ListenableFuture<JIRAInfo>> jiraInfoFutures = new ArrayList<ListenableFuture<JIRAInfo>>();

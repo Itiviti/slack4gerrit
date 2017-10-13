@@ -8,6 +8,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.gerrit.ReviewRequestCleanupTask;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
@@ -38,7 +39,7 @@ public class Connector
         {
             String proxyURL = parameters.getProperty(Constants.PROXY_HOST);
             int proxyPort = Integer.parseInt(parameters.getProperty(Constants.PROXY_PORT, "80"));
-            session = SlackSessionFactory.createWebSocketSlackSession(parameters.getProperty(Constants.BOT_TOKEN), Proxy.Type.HTTP, proxyURL, proxyPort);
+            session = SlackSessionFactory.getSlackSessionBuilder(parameters.getProperty(Constants.BOT_TOKEN)).withProxy(Proxy.Type.HTTP, proxyURL, proxyPort).build();
         }
         else
         {
@@ -46,8 +47,9 @@ public class Connector
         }
         ReviewRequestService reviewRequestService = Connector.injector.getProvider(ReviewRequestService.class).get();
         GerritChangeInfoService gerritChangeInfoService = Connector.injector.getProvider(GerritChangeInfoService.class).get();
+        ChangeInfoFormatter gerritChangeDecorator = Connector.injector.getProvider(ChangeInfoFormatter.class).get();
         session.addMessagePostedListener(new ReviewMessageListener());
-        scheduledExecutor.scheduleAtFixedRate(new ReviewRequestCleanupTask(reviewRequestService, gerritChangeInfoService, session), 1, 5, TimeUnit.MINUTES);
+        scheduledExecutor.scheduleAtFixedRate(new ReviewRequestCleanupTask(reviewRequestService, gerritChangeInfoService, gerritChangeDecorator, session, scheduledExecutor), 1, 5, TimeUnit.MINUTES);
         session.connect();
 
         Thread.sleep(Long.MAX_VALUE);
