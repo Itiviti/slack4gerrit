@@ -13,25 +13,18 @@ public class ChangeInfo
 
         static IssuePriority fromString(String value)
         {
-            if ("Minor".equals(value))
+            switch (value)
             {
-                return MINOR;
-            }
-            else if ("Major".equals(value))
-            {
-                return MAJOR;
-            }
-            else if ("Critical".equals(value))
-            {
-                return CRITICAL;
-            }
-            else if ("Blocker".equals(value))
-            {
-                return BLOCKER;
-            }
-            else
-            {
-                return UNKNOWN;
+                case "Minor":
+                    return MINOR;
+                case "Major":
+                    return MAJOR;
+                case "Critical":
+                    return CRITICAL;
+                case "Blocker":
+                    return BLOCKER;
+                default:
+                    return UNKNOWN;
             }
         }
     }
@@ -42,38 +35,33 @@ public class ChangeInfo
 
         static IssueType fromString(String value)
         {
-            if ("Bug".equals(value))
+            switch (value)
             {
-                return BUG;
-            }
-            else if ("Improvement".equals(value))
-            {
-                return IMPROVEMENT;
-            }
-            else if ("Question".equals(value))
-            {
-                return QUESTION;
-            }
-            else
-            {
-                return UNKNOWN;
+                case "Bug":
+                    return BUG;
+                case "Improvement":
+                    return IMPROVEMENT;
+                case "Question":
+                    return QUESTION;
+                default:
+                    return UNKNOWN;
             }
         }
     }
 
-    private String                owner;
-    private String                ownerEmail;
-    private String                project;
-    private String                branch;
-    private String                subject;
-    private String                changeId;
-    private String                id;
-    private String                cherryPickedFrom;
-    private Date                  created;
-    private Date                  updated;
-    private int                   insertion;
-    private int                   deletion;
-    private String                commitMessage;
+    private String owner;
+    private String ownerEmail;
+    private String project;
+    private String branch;
+    private String subject;
+    private String changeId;
+    private String id;
+    private String cherryPickedFrom;
+    private Date created;
+    private Date updated;
+    private int insertion;
+    private int deletion;
+    private String commitMessage;
     private Map<String, JIRAInfo> relatedJira = new HashMap<String, JIRAInfo>();
 
     public Map<String, JIRAInfo> getRelatedJira()

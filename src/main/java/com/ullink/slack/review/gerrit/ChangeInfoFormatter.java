@@ -5,5 +5,5 @@ import com.ullink.slack.simpleslackapi.SlackSession;
 
 public interface ChangeInfoFormatter
 {
-    public SlackAttachment createAttachment(String changeId, ChangeInfo changeInfo, SlackSession session);
+    SlackAttachment createAttachment(String changeId, ChangeInfo changeInfo, SlackSession session);
 }

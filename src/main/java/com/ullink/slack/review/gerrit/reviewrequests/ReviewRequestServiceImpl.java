@@ -15,12 +15,12 @@ public class ReviewRequestServiceImpl implements ReviewRequestService
 {
     private Map<String, List<ReviewRequest>> reviewRequestMap;
     @Inject
-    private DB                                     db;
+    private DB db;
 
     @Inject
     public ReviewRequestServiceImpl(DB db)
     {
-        reviewRequestMap = db.<String, List<ReviewRequest>> getTreeMap("ReviewRequests");
+        reviewRequestMap = db.getTreeMap("ReviewRequests");
     }
 
     @Override
@@ -49,7 +49,7 @@ public class ReviewRequestServiceImpl implements ReviewRequestService
         List<ReviewRequest> requestList = reviewRequestMap.get(requestId);
         if (requestList != null)
         {
-            return new ArrayList<ReviewRequest>(requestList);
+            return new ArrayList<>(requestList);
         }
         return Collections.emptyList();
     }
@@ -60,8 +60,8 @@ public class ReviewRequestServiceImpl implements ReviewRequestService
         try
         {
             Collection<ReviewRequest> requestList = getReviewRequests(reviewRequest.getChangeId());
-            ArrayList<ReviewRequest> newList = new ArrayList<ReviewRequest>(requestList);
-            for (Iterator<ReviewRequest> reviewRequestIterator = newList.iterator(); reviewRequestIterator.hasNext();)
+            List<ReviewRequest> newList = new ArrayList<>(requestList);
+            for (Iterator<ReviewRequest> reviewRequestIterator = newList.iterator(); reviewRequestIterator.hasNext(); )
             {
                 ReviewRequest request = reviewRequestIterator.next();
                 if (reviewRequest.getChannelId().equals(request.getChannelId()))
@@ -83,7 +83,7 @@ public class ReviewRequestServiceImpl implements ReviewRequestService
     @Override
     public Collection<String> getAllRequestedReviews()
     {
-        return new ArrayList<String>(reviewRequestMap.keySet());
+        return new ArrayList<>(reviewRequestMap.keySet());
     }
 
     @Override
