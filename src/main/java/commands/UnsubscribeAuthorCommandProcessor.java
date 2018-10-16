@@ -1,18 +1,21 @@
 package commands;
 
-import com.ullink.slack.review.gerrit.GerritChangeInfoService;
-import com.ullink.slack.review.subscription.SubscriptionService;
-import com.ullink.slack.simpleslackapi.SlackChannel;
-import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
-import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
+import static commands.RegexConstants.ANYTHING_ELSE;
+import static commands.RegexConstants.SPACES;
+import static commands.RegexConstants.USER_ALIAS;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import com.ullink.slack.review.gerrit.GerritChangeInfoService;
+import com.ullink.slack.review.subscription.SubscriptionService;
+import com.ullink.slack.simpleslackapi.SlackChannel;
+import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
+import com.ullink.slack.simpleslackapi.SlackSession;
+import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 
 @Singleton
 public class UnsubscribeAuthorCommandProcessor implements SlackBotCommandProcessor
@@ -24,7 +27,22 @@ public class UnsubscribeAuthorCommandProcessor implements SlackBotCommandProcess
     @Inject
     private GerritChangeInfoService gerritChangeInfoService;
 
-    private static Pattern UNSUBSCRIBE_REVIEW_AUTHOR_PATTERN = Pattern.compile("!unsubscribereview\\s[^@](.*)");
+    private static final String COMMAND = "!unsubscribereview";
+    private static Pattern UNSUBSCRIBE_REVIEW_AUTHOR_PATTERN = Pattern.compile(COMMAND + SPACES + "(" + USER_ALIAS + ")" + ANYTHING_ELSE);
+
+    @Override
+    public boolean process(String command, SlackMessagePosted event, SlackSession session)
+    {
+        Matcher matcher = UNSUBSCRIBE_REVIEW_AUTHOR_PATTERN.matcher(command);
+        if (matcher.matches())
+        {
+            String projectId = matcher.group(1);
+            SlackChannel channel = event.getChannel();
+            executor.execute(new UnsubscriptionMessageHandler(channel, projectId, session));
+            return true;
+        }
+        return false;
+    }
 
     private class UnsubscriptionMessageHandler implements Runnable
     {
@@ -60,19 +78,4 @@ public class UnsubscribeAuthorCommandProcessor implements SlackBotCommandProcess
             }
         }
     }
-
-    @Override
-    public boolean process(String command, SlackMessagePosted event, SlackSession session)
-    {
-        Matcher matcher = UNSUBSCRIBE_REVIEW_AUTHOR_PATTERN.matcher(command);
-        if (matcher.matches())
-        {
-            String projectId = matcher.group(1);
-            SlackChannel channel = event.getChannel();
-            executor.execute(new UnsubscriptionMessageHandler(channel, projectId, session));
-            return true;
-        }
-        return false;
-    }
-
 }
