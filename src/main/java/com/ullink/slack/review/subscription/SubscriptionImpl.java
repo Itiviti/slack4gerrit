@@ -1,192 +1,155 @@
 package com.ullink.slack.review.subscription;
 
-import org.mapdb.DB;
+import static java.util.Collections.emptyList;
+import static java.util.stream.Collectors.toList;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import org.mapdb.DB;
 
 @Singleton
 public class SubscriptionImpl implements SubscriptionService
 {
     private Map<String, List<String>> projectSubscriptionMap;
     private Map<String, List<String>> userSubscriptionMap;
-    @Inject
-    private DB                        db;
 
-    private ReadWriteLock             lock = new ReentrantReadWriteLock();
+    @Inject
+    private DB db;
+
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
     @Inject
     public SubscriptionImpl(DB db)
     {
-        projectSubscriptionMap = db.<String, List<String>> getTreeMap("ProjectSubscription");
-        userSubscriptionMap = db.<String, List<String>> getTreeMap("UserSubscription");
+        projectSubscriptionMap = db.getTreeMap("ProjectSubscription");
+        userSubscriptionMap = db.getTreeMap("UserSubscription");
     }
 
     @Override
     public Collection<String> getChannelsListeningToProject(String projectName)
     {
-        Lock readLock = lock.readLock();
-        readLock.lock();
-        try
-        {
-            List<String> channelList = projectSubscriptionMap.get(projectName);
-            if (channelList != null)
-            {
-                return new ArrayList<String>(channelList);
-            }
-        }
-        finally
-        {
-            readLock.unlock();
-        }
-        return Collections.emptyList();
+        return getSubscribedChannels(projectName, projectSubscriptionMap);
     }
 
     @Override
     public Collection<String> getChannelsListeningToUser(String userName)
     {
-        Lock readLock = lock.readLock();
-        readLock.lock();
-        try
-        {
-            List<String> channelList = userSubscriptionMap.get(userName);
-            if (channelList != null)
-            {
-                return new ArrayList<String>(channelList);
-            }
-        }
-        finally
-        {
-            readLock.unlock();
-        }
-        return Collections.emptyList();
+        return getSubscribedChannels(userName, userSubscriptionMap);
     }
 
     @Override
     public Collection<String> getChannelSubscriptions(String channelId)
     {
-        Lock readLock = lock.readLock();
-        readLock.lock();
-        try
-        {
-            // full scan...
-            Set<String> projectList = projectSubscriptionMap.keySet();
-            Set<String> userList = userSubscriptionMap.keySet();
-            List<String> toReturn = new ArrayList<String>();
-            for (String projectId : projectList)
-            {
-                if (getChannelsListeningToProject(projectId).contains(channelId))
-                {
-                    toReturn.add("Project: " + projectId);
-                }
-            }
-            for (String userId : userList)
-            {
-                if (getChannelsListeningToUser(userId).contains(channelId))
-                {
-                    toReturn.add("User: @" + userId);
-                }
-            }
-            return toReturn;
-        }
-        finally
-        {
-            readLock.unlock();
-        }
+        return read(() ->
+            Stream.concat(
+                getChannelSubscriptions(channelId, projectSubscriptionMap).map(project -> "Project: " + project),
+                getChannelSubscriptions(channelId, userSubscriptionMap).map(user -> "User: @" + user))
+                .collect(toList())
+        );
     }
 
     @Override
     public void subscribeOnProject(String projectName, String channelId)
     {
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try
-        {
-            Collection<String> requestList = getChannelsListeningToProject(projectName);
-            ArrayList<String> newList = new ArrayList<String>(requestList);
-            for (String subscribingChannelId : newList)
-            {
-                if (channelId.equals(subscribingChannelId))
-                {
-                    // already subscribed
-                    return;
-                }
-            }
-            newList.add(channelId);
-            projectSubscriptionMap.put(projectName, newList);
-            db.commit();
-        }
-        catch (Throwable e)
-        {
-            e.printStackTrace();
-            db.rollback();
-        }
-        finally
-        {
-            writeLock.unlock();
-        }
-    }
-
-    @Override
-    public void unsubscribeOnProject(String projectName, String channelId)
-    {
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try
-        {
-            Collection<String> requestList = getChannelsListeningToProject(projectName);
-            ArrayList<String> newList = new ArrayList<String>(requestList);
-            for (Iterator<String> channelIterator = newList.iterator(); channelIterator.hasNext();)
-            {
-                String subscribingChannelId = channelIterator.next();
-                if (channelId.equals(subscribingChannelId))
-                {
-                    channelIterator.remove();
-                }
-            }
-            projectSubscriptionMap.put(projectName, newList);
-            db.commit();
-        }
-        catch (Throwable e)
-        {
-            e.printStackTrace();
-            db.rollback();
-        }
-        finally
-        {
-            writeLock.unlock();
-        }
+        subscribe(channelId, projectName, projectSubscriptionMap);
     }
 
     @Override
     public void subscribeOnUser(String userName, String channelId)
     {
+        subscribe(channelId, userName, userSubscriptionMap);
+    }
+
+    @Override
+    public void unsubscribeOnProject(String projectName, String channelId)
+    {
+        unsubscribe(channelId, projectName, projectSubscriptionMap);
+    }
+
+    @Override
+    public void unsubscribeOnUser(String userName, String channelId)
+    {
+        unsubscribe(channelId, userName, userSubscriptionMap);
+    }
+
+    private void subscribe(String channelId, String key, Map<String, List<String>> subscriptions)
+    {
+        write(() -> {
+            try
+            {
+                Collection<String> subscribedChannels = getSubscribedChannels(key, subscriptions);
+                if (!subscribedChannels.contains(channelId))
+                {
+                    List<String> newList = new ArrayList<>(subscribedChannels);
+                    newList.add(channelId);
+                    subscriptions.put(key, newList);
+                    db.commit();
+                }
+            }
+            catch (Throwable e)
+            {
+                e.printStackTrace();
+                db.rollback();
+            }
+        });
+    }
+
+    private void unsubscribe(String channelId, String key, Map<String, List<String>> subscriptions)
+    {
+        write(() -> {
+            try
+            {
+                Collection<String> requestList = getSubscribedChannels(key, subscriptions);
+                List<String> newList = new ArrayList<>(requestList);
+                if (newList.removeIf(channelId::equals))
+                {
+                    subscriptions.put(key, newList);
+                    db.commit();
+                }
+            }
+            catch (Throwable e)
+            {
+                e.printStackTrace();
+                db.rollback();
+            }
+        });
+    }
+
+    private Collection<String> getSubscribedChannels(String key, Map<String, List<String>> subscriptions)
+    {
+        return read(() ->
+            Optional.ofNullable(key)
+                .map(subscriptions::get)
+                .<List>map(ArrayList::new)
+                .orElse(emptyList())
+        );
+    }
+
+    private Stream<String> getChannelSubscriptions(String channelId, Map<String, List<String>> subscriptions)
+    {
+        return subscriptions.entrySet().stream()
+            .filter(e -> e.getValue() != null)
+            .filter(e -> e.getValue().contains(channelId))
+            .map(e -> e.getKey());
+    }
+
+    private void write(Runnable runnable)
+    {
         Lock writeLock = lock.writeLock();
         writeLock.lock();
         try
         {
-            Collection<String> requestList = getChannelsListeningToUser(userName);
-            ArrayList<String> newList = new ArrayList<String>(requestList);
-            for (String subscribingChannelId : newList)
-            {
-                if (channelId.equals(subscribingChannelId))
-                {
-                    // already subscribed
-                    return;
-                }
-            }
-            newList.add(channelId);
-            userSubscriptionMap.put(userName, newList);
-            db.commit();
-        }
-        catch (Throwable e)
-        {
-            e.printStackTrace();
-            db.rollback();
+            runnable.run();
         }
         finally
         {
@@ -194,33 +157,17 @@ public class SubscriptionImpl implements SubscriptionService
         }
     }
 
-    @Override
-    public void unsubscribeOnUser(String userName, String channelId){
-        Lock writeLock = lock.writeLock();
-        writeLock.lock();
+    private <T> T read(Supplier<T> supplier)
+    {
+        Lock readLock = lock.readLock();
+        readLock.lock();
         try
         {
-            Collection<String> requestList = getChannelsListeningToUser(userName);
-            ArrayList<String> newList = new ArrayList<String>(requestList);
-            for (Iterator<String> channelIterator = newList.iterator(); channelIterator.hasNext();)
-            {
-                String subscribingChannelId = channelIterator.next();
-                if (channelId.equals(subscribingChannelId))
-                {
-                    channelIterator.remove();
-                }
-            }
-            userSubscriptionMap.put(userName, newList);
-            db.commit();
-        }
-        catch (Throwable e)
-        {
-            e.printStackTrace();
-            db.rollback();
+            return supplier.get();
         }
         finally
         {
-            writeLock.unlock();
+            readLock.unlock();
         }
     }
 }
