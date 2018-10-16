@@ -45,9 +45,26 @@ public class SubscribeAuthorCommandProcessor implements SlackBotCommandProcessor
         return false;
     }
 
+    @Override
+    public String name()
+    {
+        return COMMAND;
+    }
+
+    @Override
+    public String pattern()
+    {
+        return COMMAND + " @<user>";
+    }
+
+    @Override
+    public String help()
+    {
+        return "will subscribe the current channel to review requests from <user>";
+    }
+
     private class SubscriptionMessageHandler implements Runnable
     {
-
         SlackChannel channelToSubscribe;
         String userId;
         SlackSession session;

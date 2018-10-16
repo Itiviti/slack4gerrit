@@ -33,4 +33,15 @@ public class ListReviewCommandProcessor implements SlackBotCommandProcessor
         return false;
     }
 
+    @Override
+    public String name()
+    {
+        return COMMAND;
+    }
+
+    @Override
+    public String help()
+    {
+        return "will list the channel subscriptions";
+    }
 }

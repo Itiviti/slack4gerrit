@@ -44,6 +44,24 @@ public class UnsubscribeProjectCommandProcessor implements SlackBotCommandProces
         return false;
     }
 
+    @Override
+    public String name()
+    {
+        return COMMAND;
+    }
+
+    @Override
+    public String pattern()
+    {
+        return COMMAND + " <project>";
+    }
+
+    @Override
+    public String help()
+    {
+        return "will unsubscribe the current channel to review requests on <project>";
+    }
+
     private class UnsubscriptionMessageHandler implements Runnable
     {
 

@@ -44,9 +44,26 @@ public class SubscribeProjectCommandProcessor implements SlackBotCommandProcesso
         return false;
     }
 
+    @Override
+    public String name()
+    {
+        return COMMAND;
+    }
+
+    @Override
+    public String pattern()
+    {
+        return COMMAND + " <project>";
+    }
+
+    @Override
+    public String help()
+    {
+        return "will subscribe the current channel to review requests on <project>";
+    }
+
     private class SubscriptionMessageHandler implements Runnable
     {
-
         SlackChannel channelToSubscribe;
         String projectId;
         SlackSession session;

@@ -2,6 +2,7 @@ package com.ullink.slack.review;
 
 import java.util.ArrayList;
 import java.util.List;
+import commands.HelpCommandProcessor;
 import commands.ListReviewCommandProcessor;
 import commands.PublishReviewCommandProcessor;
 import commands.ReviewCommandProcessor;
@@ -20,11 +21,15 @@ public class ReviewMessageListener implements SlackMessagePostedListener
 
     public ReviewMessageListener()
     {
+        HelpCommandProcessor helpCommandProcessor = Connector.injector.getInstance(HelpCommandProcessor.class);
+
         commandProcessors.add(Connector.injector.getInstance(ReviewCommandProcessor.class));
         commandProcessors.add(Connector.injector.getInstance(PublishReviewCommandProcessor.class));
         commandProcessors.add(Connector.injector.getInstance(SubscribeProjectCommandProcessor.class));
         commandProcessors.add(Connector.injector.getInstance(UnsubscribeProjectCommandProcessor.class));
         commandProcessors.add(Connector.injector.getInstance(ListReviewCommandProcessor.class));
+        commandProcessors.add(helpCommandProcessor);
+        helpCommandProcessor.setCommands(commandProcessors);
     }
 
     @Override

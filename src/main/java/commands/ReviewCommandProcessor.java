@@ -3,9 +3,13 @@ package commands;
 import static commands.RegexConstants.CHANGE_ID;
 import static commands.RegexConstants.COMMENT;
 import static commands.RegexConstants.SPACES;
+import static java.lang.System.lineSeparator;
+import static java.util.stream.Collectors.joining;
+
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import jobs.PublishMessageJob;
@@ -50,6 +54,29 @@ public class ReviewCommandProcessor implements SlackBotCommandProcessor
             return true;
         }
         return false;
+    }
+
+    @Override
+    public String name()
+    {
+        return COMMAND;
+    }
+
+    @Override
+    public String pattern()
+    {
+        return
+            name() + " <changeId>( <changeId>)* <comment>`";
+    }
+
+    @Override
+    public String help()
+    {
+        return Stream.of(
+            "will publish the details of multiple changes to review to this channel.",
+            "<changeId>: the change(s) to publish",
+            "<comment>: a comment that will be published with the change"
+        ).collect(joining(lineSeparator()));
     }
 
 }

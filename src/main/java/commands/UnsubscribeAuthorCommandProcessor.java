@@ -44,6 +44,24 @@ public class UnsubscribeAuthorCommandProcessor implements SlackBotCommandProcess
         return false;
     }
 
+    @Override
+    public String name()
+    {
+        return COMMAND;
+    }
+
+    @Override
+    public String pattern()
+    {
+        return COMMAND + " @<user>";
+    }
+
+    @Override
+    public String help()
+    {
+        return "will unsubscribe the current channel to review requests from <user>";
+    }
+
     private class UnsubscriptionMessageHandler implements Runnable
     {
 
