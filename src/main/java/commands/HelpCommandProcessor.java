@@ -1,14 +1,3 @@
-/*************************************************************************
- * ULLINK CONFIDENTIAL INFORMATION
- * _______________________________
- *
- * All Rights Reserved.
- *
- * NOTICE: This file and its content are the property of Ullink. The
- * information included has been classified as Confidential and may
- * not be copied, modified, distributed, or otherwise disseminated, in
- * whole or part, without the express written permission of Ullink.
- *************************************************************************/
 package commands;
 
 import static commands.RegexConstants.ANYTHING_ELSE;
@@ -31,13 +20,13 @@ import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 public class HelpCommandProcessor implements SlackBotCommandProcessor
 {
     private static final String COMMAND = "!help";
-    private static Pattern LIST_REVIEW_PATTERN = Pattern.compile(COMMAND + "(" + SPACES + "(" + ANYTHING_ELSE + "))?");
+    private static Pattern HELP_PATTERN = Pattern.compile(COMMAND + "(" + SPACES + "(" + ANYTHING_ELSE + "))?");
     private Collection<SlackBotCommandProcessor> commands = Collections.emptyList();
 
     @Override
     public boolean process(String command, SlackMessagePosted event, SlackSession session)
     {
-        Matcher matcher = LIST_REVIEW_PATTERN.matcher(command);
+        Matcher matcher = HELP_PATTERN.matcher(command);
         if (!matcher.matches())
         {
             return false;
