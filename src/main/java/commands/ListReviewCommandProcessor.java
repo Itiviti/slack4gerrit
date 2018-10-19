@@ -6,9 +6,9 @@ import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import com.ullink.slack.review.subscription.SubscriptionService;
+import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
-import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
 
 @Singleton
 public class ListReviewCommandProcessor implements SlackBotCommandProcessor
@@ -16,13 +16,14 @@ public class ListReviewCommandProcessor implements SlackBotCommandProcessor
     @Inject
     private SubscriptionService subscriptionService;
 
-    private static Pattern             LIST_REVIEW_PATTERN = Pattern.compile("!listreviewsubscription");
+    private static final String COMMAND = "!listreviewsubscription";
+
+    private static Pattern LIST_REVIEW_PATTERN = Pattern.compile(COMMAND);
 
     @Override
     public boolean process(String command, SlackMessagePosted event, SlackSession session)
     {
         Matcher matcher = LIST_REVIEW_PATTERN.matcher(command);
-        int count = 0;
         if (matcher.matches())
         {
             Collection<String> projects = subscriptionService.getChannelSubscriptions(event.getChannel().getId());
@@ -32,4 +33,15 @@ public class ListReviewCommandProcessor implements SlackBotCommandProcessor
         return false;
     }
 
+    @Override
+    public String name()
+    {
+        return COMMAND;
+    }
+
+    @Override
+    public String help()
+    {
+        return "will list the channel subscriptions";
+    }
 }

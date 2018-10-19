@@ -1,5 +1,9 @@
 package commands;
 
+import static commands.RegexConstants.ANYTHING_ELSE;
+import static commands.RegexConstants.PROJECT;
+import static commands.RegexConstants.SPACES;
+
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Matcher;
@@ -9,27 +13,59 @@ import javax.inject.Singleton;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackChannel;
+import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
-import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
 
 @Singleton
 public class SubscribeProjectCommandProcessor implements SlackBotCommandProcessor
 {
     @Inject
-    private GerritChangeInfoService    gerritChangeInfoService;
+    private GerritChangeInfoService gerritChangeInfoService;
     @Inject
     private SubscriptionService subscriptionService;
     @Inject
-    private ExecutorService            executor;
+    private ExecutorService executor;
 
-    private static Pattern SUBSCRIBE_REVIEW_PROJECT_PATTERN = Pattern.compile("!subscribereview\\s(.*)");
+    private static final String COMMAND = "!subscribereview";
+    private static Pattern SUBSCRIBE_REVIEW_PROJECT_PATTERN = Pattern.compile(COMMAND + SPACES + "(" + PROJECT + ")" + ANYTHING_ELSE);
+
+    @Override
+    public boolean process(String command, SlackMessagePosted event, SlackSession session)
+    {
+        Matcher matcher = SUBSCRIBE_REVIEW_PROJECT_PATTERN.matcher(command);
+        if (matcher.matches())
+        {
+            String projectId = matcher.group(1);
+            SlackChannel channel = event.getChannel();
+            executor.execute(new SubscriptionMessageHandler(channel, projectId, session));
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public String name()
+    {
+        return COMMAND;
+    }
+
+    @Override
+    public String pattern()
+    {
+        return COMMAND + " <project>";
+    }
+
+    @Override
+    public String help()
+    {
+        return "will subscribe the current channel to review requests on <project>";
+    }
 
     private class SubscriptionMessageHandler implements Runnable
     {
-
         SlackChannel channelToSubscribe;
-        String       projectId;
+        String projectId;
         SlackSession session;
 
         public SubscriptionMessageHandler(SlackChannel channelToSubscribe, String projectId, SlackSession session)
@@ -59,19 +95,5 @@ public class SubscribeProjectCommandProcessor implements SlackBotCommandProcesso
             }
         }
     }
-
-    @Override
-    public boolean process(String command, SlackMessagePosted event, SlackSession session)
-    {
-        Matcher matcher = SUBSCRIBE_REVIEW_PROJECT_PATTERN.matcher(command);
-        if (matcher.matches())
-        {
-            String projectId = matcher.group(1);
-            SlackChannel channel = event.getChannel();
-            executor.execute(new SubscriptionMessageHandler(channel, projectId, session));
-            return true;
-        }
-        return false;
-    }
-
 }
+
