@@ -98,13 +98,15 @@ public class PublishMessageJob implements Runnable
                     for (String channelId : channelsListening)
                     {
                         SlackChannel channel = session.findChannelById(channelId);
-                        SlackMessageHandle<SlackMessageReply> handle = session.sendMessage(channel, comment, attachment, SlackChatConfiguration.getConfiguration().asUser());
-                        ReviewRequest previousRequest = reviewRequestService.getReviewRequest(channel.getId(), changeId);
-                        ReviewRequest newRequest = new ReviewRequest(handle.getReply().getTimestamp(), changeId, channel.getId());
-                        reviewRequestService.registerReviewRequest(newRequest);
-                        if (previousRequest != null)
-                        {
-                            session.deleteMessage(previousRequest.getLastRequestTimestamp(), channel);
+                        if (channel != null) {
+                            SlackMessageHandle<SlackMessageReply> handle = session.sendMessage(channel, comment, attachment, SlackChatConfiguration.getConfiguration().asUser());
+                            ReviewRequest previousRequest = reviewRequestService.getReviewRequest(channel.getId(), changeId);
+                            ReviewRequest newRequest = new ReviewRequest(handle.getReply().getTimestamp(), changeId, channel.getId());
+                            reviewRequestService.registerReviewRequest(newRequest);
+                            if (previousRequest != null)
+                            {
+                                session.deleteMessage(previousRequest.getLastRequestTimestamp(), channel);
+                            }
                         }
                     }
                 }
