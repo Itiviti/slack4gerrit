@@ -1,6 +1,7 @@
 package com.ullink.slack.review.gerrit;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -11,6 +12,8 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -26,6 +29,7 @@ import com.ullink.slack.review.gerrit.ChangeInfo.IssueType;
 @Singleton
 public class GerritChangeInfoService
 {
+    private static final Logger LOGGER       = LoggerFactory.getLogger(ChangeInfoJSONParser.class);
 
     @Inject
     @Named(Constants.GERRIT_URL)
@@ -78,12 +82,11 @@ public class GerritChangeInfoService
             List<String> changeJSONInfos;
             try
             {
-                changeJSONInfos = Futures.<String> successfulAsList(jsonChangeInfoHolder, jsonCommitMessageHolder).get(20000, TimeUnit.MILLISECONDS);
+                changeJSONInfos = Futures.successfulAsList(jsonChangeInfoHolder, jsonCommitMessageHolder).get(20000, TimeUnit.MILLISECONDS);
             }
             catch (Exception e)
             {
-                // TODO improve exception handling
-                e.printStackTrace();
+                LOGGER.error("Exception raised while getting ChangeInfo ", e);
                 return null;
             }
             ChangeInfo changeInfo = new ChangeInfoJSONParser(changeJSONInfos.get(0), changeJSONInfos.get(1)).parse();
@@ -99,13 +102,13 @@ public class GerritChangeInfoService
             if (changeInfo.getRelatedJira().size() > 0)
             {
 
-                List<ListenableFuture<JIRAInfo>> jiraInfoFutures = new ArrayList<ListenableFuture<JIRAInfo>>();
+                List<ListenableFuture<JIRAInfo>> jiraInfoFutures = new ArrayList<>();
                 for (Iterator<Entry<String, JIRAInfo>> entryIterator = changeInfo.getRelatedJira().entrySet().iterator(); entryIterator.hasNext();)
                 {
                     Entry<String, JIRAInfo> entry = entryIterator.next();
                     jiraInfoFutures.add(Futures.transform(HttpHelper.getAsyncFromHttp(new URL(jiraURL + "rest/api/2/issue/" + entry.getKey()), jiraUser, jiraPassword), new JIRAParserFunction(entry.getKey())));
                 }
-                ListenableFuture<List<JIRAInfo>> jiraInfosFuture = Futures.<JIRAInfo> successfulAsList(jiraInfoFutures);
+                ListenableFuture<List<JIRAInfo>> jiraInfosFuture = Futures.successfulAsList(jiraInfoFutures);
                 List<JIRAInfo> jiraInfos;
                 try
                 {
@@ -113,8 +116,7 @@ public class GerritChangeInfoService
                 }
                 catch (Exception e)
                 {
-                    // TODO improve exception handling
-                    e.printStackTrace();
+                    LOGGER.error("Exception raised while getting ChangeInfo ", e);
                     return null;
                 }
                 for (JIRAInfo jiraInfo : jiraInfos)
@@ -126,30 +128,59 @@ public class GerritChangeInfoService
         }
         catch (java.text.ParseException e)
         {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            LOGGER.error("Exception raised while parsing data ", e);
             return null;
         }
     }
 
     public boolean isMergedOrAbandoned(String changeId)
     {
-        try
-        {
-            ListenableFuture<String> jsonChangeInfoHolder = HttpHelper.getAsyncFromHttp(new URL(gerritURL + "changes/" + changeId + "/detail"));
-            String json = jsonChangeInfoHolder.get(20000, TimeUnit.MILLISECONDS);
-            json = json.substring(4);
+        URL changeURL = buildURL(gerritURL + "changes/" + changeId + "/detail");
+        String json = fetchJSONData(changeURL);
+        JsonObject jsonObj =parseJson(json);
+        JsonElement statusElement = jsonObj.get("status");
+        String status = statusElement != null ? statusElement.getAsString() : null;
+        return "MERGED".equals(status) || "ABANDONED".equals(status);
+    }
+
+    private JsonObject parseJson(String json)
+    {
+        try {
             JsonParser parser = new JsonParser();
-            JsonObject jsonObj = parser.parse(json).getAsJsonObject();
-            JsonElement statusElement = jsonObj.get("status");
-            String status = statusElement != null ? statusElement.getAsString() : null;
-            return "MERGED".equals(status) || "ABANDONED".equals(status);
+            return parser.parse(json).getAsJsonObject();
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            LOGGER.error("Exception raised while parsing JSON data from gerrit " + json + " ", e);
+            throw new RuntimeException(e);
         }
-        return false;
+    }
+
+    private String fetchJSONData(URL changeURL)
+    {
+        try
+        {
+            ListenableFuture<String> jsonChangeInfoHolder = HttpHelper.getAsyncFromHttp(changeURL);
+            return jsonChangeInfoHolder.get(20000, TimeUnit.MILLISECONDS).substring(4);
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Exception raised while fetching data from gerrit location " + changeURL + " ", e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private URL buildURL(String urlPath)
+    {
+        try
+        {
+            return new URL(urlPath);
+        }
+        catch (MalformedURLException e)
+        {
+            LOGGER.error("Malformed URL Exception: ", e);
+            throw new RuntimeException(e);
+        }
     }
 
     public boolean projectExists(String projectId) throws IOException

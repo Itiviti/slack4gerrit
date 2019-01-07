@@ -31,11 +31,18 @@ public class ReviewRequestCleanupTask implements Runnable
         Collection<String> pendingChanges = reviewRequestService.getAllRequestedReviews();
         for (String changeId : pendingChanges)
         {
-            if (gerritChangeInfoService.isMergedOrAbandoned(changeId))
+            try
             {
-                executorService.submit(new DeleteMessageJob(changeId, session, reviewRequestService));
-            } else {
-                executorService.submit(new RefreshMessageJob(changeId, session, reviewRequestService, gerritChangeInfoService, changeInfoDecorator));
+                if (gerritChangeInfoService.isMergedOrAbandoned(changeId))
+                {
+                    executorService.submit(new DeleteMessageJob(changeId, session, reviewRequestService));
+                }
+                else
+                {
+                    executorService.submit(new RefreshMessageJob(changeId, session, reviewRequestService, gerritChangeInfoService, changeInfoDecorator));
+                }
+            } catch (RuntimeException e) {
+                // DO NOTHING, error was logged
             }
         }
     }
