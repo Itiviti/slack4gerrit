@@ -89,8 +89,7 @@ public class ChangeInfoJSONParser
                         }
                         catch (UnsupportedEncodingException e)
                         {
-                            // TODO Auto-generated catch block
-                            e.printStackTrace();
+                            LOGGER.error("Exception while parsing change JSON: " + changeInfoJSON, e);
                         }
                         String email = GsonHelper.getStringOrNull(reviewJSON.get("email"));
                         Review review = new Review();
