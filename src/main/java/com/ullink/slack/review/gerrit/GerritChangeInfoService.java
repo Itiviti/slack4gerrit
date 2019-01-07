@@ -137,7 +137,10 @@ public class GerritChangeInfoService
     {
         URL changeURL = buildURL(gerritURL + "changes/" + changeId + "/detail");
         String json = fetchJSONData(changeURL);
-        JsonObject jsonObj =parseJson(json);
+        if ("not found".equalsIgnoreCase(json.substring(0,9))) {
+            return true;
+        }
+        JsonObject jsonObj = parseJson(json);
         JsonElement statusElement = jsonObj.get("status");
         String status = statusElement != null ? statusElement.getAsString() : null;
         return "MERGED".equals(status) || "ABANDONED".equals(status);
@@ -161,7 +164,7 @@ public class GerritChangeInfoService
         try
         {
             ListenableFuture<String> jsonChangeInfoHolder = HttpHelper.getAsyncFromHttp(changeURL);
-            return jsonChangeInfoHolder.get(20000, TimeUnit.MILLISECONDS).substring(4);
+            return jsonChangeInfoHolder.get(20000, TimeUnit.MILLISECONDS);
         }
         catch (Exception e)
         {
