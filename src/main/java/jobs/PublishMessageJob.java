@@ -3,6 +3,8 @@ package jobs;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.ullink.slack.review.gerrit.ChangeInfo;
 import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
@@ -18,6 +20,8 @@ import com.ullink.slack.simpleslackapi.replies.SlackMessageReply;
 
 public class PublishMessageJob implements Runnable
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PublishMessageJob.class);
+
     private SlackChannel                     fromChannel;
     private SlackChannel                     targetChannel;
     private String                           targetChannelName;
@@ -98,7 +102,8 @@ public class PublishMessageJob implements Runnable
                     for (String channelId : channelsListening)
                     {
                         SlackChannel channel = session.findChannelById(channelId);
-                        if (channel != null) {
+                        if (channel != null && !channel.isArchived())
+                        {
                             SlackMessageHandle<SlackMessageReply> handle = session.sendMessage(channel, comment, attachment, SlackChatConfiguration.getConfiguration().asUser());
                             ReviewRequest previousRequest = reviewRequestService.getReviewRequest(channel.getId(), changeId);
                             ReviewRequest newRequest = new ReviewRequest(handle.getReply().getTimestamp(), changeId, channel.getId());
@@ -115,7 +120,7 @@ public class PublishMessageJob implements Runnable
         catch (IOException e)
         {
             session.sendMessage(fromChannel, "Could not find change id *`" + changeId + "`*, check that the change id is valid and does not correspond to a draft", null, SlackChatConfiguration.getConfiguration().asUser());
-            e.printStackTrace();
+            LOGGER.error("Could not publish review for change id " + changeId, e);
         }
     }
 }
