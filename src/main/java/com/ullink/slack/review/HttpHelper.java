@@ -18,6 +18,8 @@ import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.google.common.io.CharStreams;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
@@ -25,6 +27,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 
 public class HttpHelper
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(HttpHelper.class);
 
     private static ListeningExecutorService executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8));
 
@@ -52,8 +55,7 @@ public class HttpHelper
 
     public static ListenableFuture<String> getAsyncFromHttp(URL url)
     {
-        HttpDataRetriever retriever = new HttpDataRetriever(url, null, null);
-        return executor.submit(retriever);
+        return getAsyncFromHttp(url, null, null);
     }
 
     public static ListenableFuture<String> getAsyncFromHttp(URL url, String user, String password)
@@ -69,6 +71,8 @@ public class HttpHelper
 
     public static String getFromHttp(URL url, String user, String password) throws IOException
     {
+        LOGGER.debug("Fetching data from URL: " + url);
+
         HttpClientContext context = HttpClientContext.create();
         if (user != null)
         {
@@ -85,11 +89,12 @@ public class HttpHelper
         HttpClient client = HttpClientBuilder.create().build();
         HttpGet request = new HttpGet(url.toExternalForm());
         HttpResponse response = client.execute(request, context);
+        LOGGER.debug("Response status code: " + response.getStatusLine().getStatusCode());
         InputStreamReader streamReader = new InputStreamReader(response.getEntity().getContent());
         String data = CharStreams.toString(streamReader);
         streamReader.close();
         return data;
-        
+
     }
 
 }
