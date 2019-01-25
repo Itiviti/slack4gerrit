@@ -8,7 +8,7 @@ public class RegexConstants
 
     public static final String SPACES = "\\s+";
     public static final String CHANGE_ID = "\\d+";
-    public static final String PROJECT = "[^@]\\W*";
+    public static final String PROJECT = "[^@][\\w|-]+";
 
     public static final String USER_ALIAS = "@\\S*";
     public static final String ANYTHING_ELSE = ".*";
