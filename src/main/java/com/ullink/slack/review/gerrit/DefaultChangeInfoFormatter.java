@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
 
+import com.google.common.base.Strings;
 import com.google.common.html.HtmlEscapers;
 import com.ullink.slack.review.Constants;
 import com.ullink.slack.review.gerrit.ChangeInfo.IssuePriority;
@@ -65,7 +66,6 @@ public class DefaultChangeInfoFormatter implements ChangeInfoFormatter
                 priorityIssues = new ArrayList<>();
                 relatedIssuesByPriority.put(entry.getValue().getPriority(), priorityIssues);
             }
-            priorityIssues.add(entry.getValue());
         }
 
         StringBuilder builder = new StringBuilder();
@@ -91,7 +91,9 @@ public class DefaultChangeInfoFormatter implements ChangeInfoFormatter
 
     protected void displayRelatedIssue(StringBuilder builder, JIRAInfo jiraData)
     {
-        builder.append('<').append(jiraURL).append(jiraData.getJiraId()).append('|').append(' ').append(jiraData.getJiraId()).append('>');
+        if (!Strings.isNullOrEmpty(jiraURL)) {
+            builder.append('<').append(jiraURL).append(jiraData.getJiraId()).append('|').append(' ').append(jiraData.getJiraId()).append('>');
+        }
     }
 
     protected String displayUser(SlackUser user)

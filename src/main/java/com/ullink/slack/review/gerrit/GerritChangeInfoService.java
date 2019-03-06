@@ -14,6 +14,7 @@ import javax.inject.Singleton;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.google.common.base.Strings;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -98,31 +99,34 @@ public class GerritChangeInfoService
             {
                 changeInfo.setCherryPickedFrom(cherryPickId);
             }
+            if (!Strings.isNullOrEmpty(jiraURL)) {
+                if (changeInfo.getRelatedJira().size() > 0)
+                {
 
-            if (changeInfo.getRelatedJira().size() > 0)
-            {
-
-                List<ListenableFuture<JIRAInfo>> jiraInfoFutures = new ArrayList<>();
-                for (Iterator<Entry<String, JIRAInfo>> entryIterator = changeInfo.getRelatedJira().entrySet().iterator(); entryIterator.hasNext();)
-                {
-                    Entry<String, JIRAInfo> entry = entryIterator.next();
-                    jiraInfoFutures.add(Futures.transform(HttpHelper.getAsyncFromHttp(new URL(jiraURL + "rest/api/2/issue/" + entry.getKey()), jiraUser, jiraPassword), new JIRAParserFunction(entry.getKey())));
+                    List<ListenableFuture<JIRAInfo>> jiraInfoFutures = new ArrayList<>();
+                    for (Iterator<Entry<String, JIRAInfo>> entryIterator = changeInfo.getRelatedJira().entrySet().iterator(); entryIterator.hasNext();)
+                    {
+                        Entry<String, JIRAInfo> entry = entryIterator.next();
+                        jiraInfoFutures.add(Futures.transform(HttpHelper.getAsyncFromHttp(new URL(jiraURL + "rest/api/2/issue/" + entry.getKey()), jiraUser, jiraPassword), new JIRAParserFunction(entry.getKey())));
+                    }
+                    ListenableFuture<List<JIRAInfo>> jiraInfosFuture = Futures.successfulAsList(jiraInfoFutures);
+                    List<JIRAInfo> jiraInfos;
+                    try
+                    {
+                        jiraInfos = jiraInfosFuture.get(20000, TimeUnit.MILLISECONDS);
+                    }
+                    catch (Exception e)
+                    {
+                        LOGGER.error("Exception raised while getting ChangeInfo ", e);
+                        return null;
+                    }
+                    for (JIRAInfo jiraInfo : jiraInfos)
+                    {
+                        changeInfo.getRelatedJira().put(jiraInfo.getJiraId(), jiraInfo);
+                    }
                 }
-                ListenableFuture<List<JIRAInfo>> jiraInfosFuture = Futures.successfulAsList(jiraInfoFutures);
-                List<JIRAInfo> jiraInfos;
-                try
-                {
-                    jiraInfos = jiraInfosFuture.get(20000, TimeUnit.MILLISECONDS);
-                }
-                catch (Exception e)
-                {
-                    LOGGER.error("Exception raised while getting ChangeInfo ", e);
-                    return null;
-                }
-                for (JIRAInfo jiraInfo : jiraInfos)
-                {
-                    changeInfo.getRelatedJira().put(jiraInfo.getJiraId(), jiraInfo);
-                }
+            } else {
+                changeInfo.getRelatedJira().clear();
             }
             return changeInfo;
         }
