@@ -17,9 +17,9 @@ import com.ullink.slack.simpleslackapi.impl.SlackSessionFactory;
 
 public class Connector
 {
-    private static final String             DEFAULT_PROPERTIES_FILE = "slack4gerrit.properties";
-    public static Injector                  injector                = null;
-    private static ScheduledExecutorService scheduledExecutor       = Executors.newScheduledThreadPool(1);
+    private static final String DEFAULT_PROPERTIES_FILE = "slack4gerrit.properties";
+    public static Injector injector = null;
+    private static ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
 
     public static void main(String[] args) throws Exception
     {
@@ -39,7 +39,7 @@ public class Connector
         {
             String proxyURL = parameters.getProperty(Constants.PROXY_HOST);
             int proxyPort = Integer.parseInt(parameters.getProperty(Constants.PROXY_PORT, "80"));
-            session = SlackSessionFactory.getSlackSessionBuilder(parameters.getProperty(Constants.BOT_TOKEN)).withProxy(Proxy.Type.HTTP, proxyURL, proxyPort).build();
+            session = SlackSessionFactory.getSlackSessionBuilder(parameters.getProperty(Constants.BOT_TOKEN)).withProxy(Proxy.Type.HTTP, proxyURL, proxyPort).withAutoreconnectOnDisconnection(true).build();
         }
         else
         {
