@@ -45,7 +45,7 @@ public class ReviewCommandProcessor implements SlackBotCommandProcessor
         Matcher matcher = REVIEW_PATTERN.matcher(command);
         if (matcher.matches())
         {
-            String[] changeIds = matcher.group(1).split(SPACES);
+            String[] changeIds = matcher.group(1).trim().split(SPACES);
             String comment = matcher.group(4);
             for (int i = 0; i < changeIds.length; i++)
             {
