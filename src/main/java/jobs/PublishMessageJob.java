@@ -2,6 +2,7 @@ package jobs;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,7 @@ import com.ullink.slack.simpleslackapi.SlackChannel;
 import com.ullink.slack.simpleslackapi.SlackMessageHandle;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
+import com.ullink.slack.simpleslackapi.replies.ParsedSlackReply;
 import com.ullink.slack.simpleslackapi.replies.SlackMessageReply;
 
 public class PublishMessageJob implements Runnable
@@ -106,6 +108,17 @@ public class PublishMessageJob implements Runnable
                         {
                             SlackMessageHandle<SlackMessageReply> handle = session.sendMessage(channel, comment, attachment, SlackChatConfiguration.getConfiguration().asUser());
                             ReviewRequest previousRequest = reviewRequestService.getReviewRequest(channel.getId(), changeId);
+                            // Workaround for https://github.com/Itiviti/simple-slack-api/issues/152
+                            ParsedSlackReply reply = handle.getReply();
+                            if (!reply.isOk())
+                            {
+                                if ("not_in_channel".equals(reply.getErrorMessage()))
+                                {
+                                    throw new IOException("Failed to send message to slack (" + reply.getErrorMessage() + "): please add bot to channel *`" + (channel.getName() != null ? channel.getName() : channel) + "`* and try again");
+                                }
+                                throw new IOException("Failed to send message to slack: " + reply.getErrorMessage());
+                            }
+                            // End of workaround for https://github.com/Itiviti/simple-slack-api/issues/152
                             ReviewRequest newRequest = new ReviewRequest(handle.getReply().getTimestamp(), changeId, channel.getId());
                             reviewRequestService.registerReviewRequest(newRequest);
                             if (previousRequest != null)
@@ -119,7 +132,16 @@ public class PublishMessageJob implements Runnable
         }
         catch (IOException e)
         {
-            session.sendMessage(fromChannel, "Could not find change id *`" + changeId + "`*, check that the change id is valid and does not correspond to a draft", null, SlackChatConfiguration.getConfiguration().asUser());
+            if (e.getMessage() != null && e.getMessage().contains("please add bot to channel"))
+            {
+                // Workaround for https://github.com/Itiviti/simple-slack-api/issues/152
+                session.sendMessage(fromChannel, e.getMessage(), null, SlackChatConfiguration.getConfiguration().asUser());
+                // End of workaround for https://github.com/Itiviti/simple-slack-api/issues/152
+            }
+            else
+            {
+                session.sendMessage(fromChannel, "Could not find change id *`" + changeId + "`*, check that the change id is valid and does not correspond to a draft", null, SlackChatConfiguration.getConfiguration().asUser());
+            }
             LOGGER.error("Could not publish review for change id " + changeId, e);
         }
     }
