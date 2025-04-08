@@ -19,6 +19,8 @@ import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
 import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public class ReviewCommandProcessor implements SlackBotCommandProcessor
@@ -34,6 +36,8 @@ public class ReviewCommandProcessor implements SlackBotCommandProcessor
     @Inject
     private ChangeInfoFormatter changeInfoDecorator;
 
+    private static final Logger LOGGER       = LoggerFactory.getLogger(ReviewCommandProcessor.class);
+
     private static final String COMMAND = "!review";
     private static Pattern REVIEW_PATTERN = Pattern.compile(COMMAND
         + "((" + SPACES + CHANGE_ID + ")+)"
@@ -45,11 +49,18 @@ public class ReviewCommandProcessor implements SlackBotCommandProcessor
         Matcher matcher = REVIEW_PATTERN.matcher(command);
         if (matcher.matches())
         {
-            String[] changeIds = matcher.group(1).split(SPACES);
+            String[] changeIds = matcher.group(1).trim().split(SPACES);
             String comment = matcher.group(4);
             for (int i = 0; i < changeIds.length; i++)
             {
-                executor.execute(new PublishMessageJob(event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
+                if (changeIds[i] != null && !changeIds[i].trim().isEmpty())
+                {
+                    executor.execute(new PublishMessageJob(event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
+                }
+                else
+                {
+                    LOGGER.error("Incorrect changeId '" + changeIds[i] + "' for command" + command);
+                }
             }
             return true;
         }

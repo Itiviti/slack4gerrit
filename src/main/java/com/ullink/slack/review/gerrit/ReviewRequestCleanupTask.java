@@ -2,13 +2,17 @@ package com.ullink.slack.review.gerrit;
 
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import jobs.DeleteMessageJob;
 import jobs.RefreshMessageJob;
+import com.ullink.slack.review.HttpHelper;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
 import com.ullink.slack.simpleslackapi.SlackSession;
 
 public class ReviewRequestCleanupTask implements Runnable
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ReviewRequestCleanupTask.class);
 
     private ReviewRequestService    reviewRequestService;
     private GerritChangeInfoService gerritChangeInfoService;
@@ -41,8 +45,10 @@ public class ReviewRequestCleanupTask implements Runnable
                 {
                     executorService.submit(new RefreshMessageJob(changeId, session, reviewRequestService, gerritChangeInfoService, changeInfoDecorator));
                 }
-            } catch (RuntimeException e) {
-                // DO NOTHING, error was logged
+            }
+            catch (Throwable t)
+            {
+                LOGGER.error("Unexpected error, t");
             }
         }
     }

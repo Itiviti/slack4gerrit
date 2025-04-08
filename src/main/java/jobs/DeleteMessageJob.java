@@ -1,6 +1,8 @@
 package jobs;
 
 import java.util.Collection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequest;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
 import com.ullink.slack.simpleslackapi.SlackChannel;
@@ -8,6 +10,8 @@ import com.ullink.slack.simpleslackapi.SlackSession;
 
 public class DeleteMessageJob implements Runnable
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DeleteMessageJob.class);
+
     private String                           changeId;
     private final SlackSession               session;
     private final ReviewRequestService       reviewRequestService;
@@ -22,16 +26,26 @@ public class DeleteMessageJob implements Runnable
     @Override
     public void run()
     {
-        Collection<ReviewRequest> reviewRequests = reviewRequestService.getReviewRequests(changeId);
-        for (ReviewRequest reviewRequest : reviewRequests)
+        try
         {
-            SlackChannel channel = session.findChannelById(reviewRequest.getChannelId());
-            if (channel != null)
+            Collection<ReviewRequest> reviewRequests = reviewRequestService.getReviewRequests(changeId);
+            for (ReviewRequest reviewRequest : reviewRequests)
             {
-                session.deleteMessage(reviewRequest.getLastRequestTimestamp(), channel);
+                SlackChannel channel = session.findChannelById(reviewRequest.getChannelId());
+                if (channel != null)
+                {
+                    session.deleteMessage(reviewRequest.getLastRequestTimestamp(), channel);
+                }
+                else
+                {
+                    LOGGER.warn("Cannot find channel " + reviewRequest.getChannelId() + " for delete request " + reviewRequest + " with changeId " + reviewRequest.getChangeId());
+                }
             }
+            reviewRequestService.deleteReviewRequest(changeId);
         }
-        reviewRequestService.deleteReviewRequest(changeId);
-
+        catch (Throwable t)
+        {
+            LOGGER.error("Unexpected error, t");
+        }
     }
 }

@@ -21,6 +21,8 @@ import com.ullink.slack.review.subscription.SubscriptionService;
 import com.ullink.slack.simpleslackapi.SlackChannel;
 import com.ullink.slack.simpleslackapi.SlackSession;
 import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Singleton
 public class PublishReviewCommandProcessor implements SlackBotCommandProcessor
@@ -35,6 +37,8 @@ public class PublishReviewCommandProcessor implements SlackBotCommandProcessor
     private GerritChangeInfoService gerritChangeInfoService;
     @Inject
     private ChangeInfoFormatter changeInfoDecorator;
+
+    private static final Logger LOGGER       = LoggerFactory.getLogger(PublishReviewCommandProcessor.class);
 
     private static final String COMMAND = "!publishreview";
     private final Pattern PUBLISH_REVIEW_PATTERN = Pattern.compile(COMMAND + SPACES
@@ -56,9 +60,13 @@ public class PublishReviewCommandProcessor implements SlackBotCommandProcessor
             String changeId = matcher.group(2);
             String comment = matcher.group(4);
             SlackChannel channel = session.findChannelByName(channelNameToPublish);
-            if (channel != null)
+            if (channel != null && changeId != null && !changeId.trim().isEmpty())
             {
                 executor.execute(new PublishMessageJob(channelNameToPublish, event.getChannel(), changeId.trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
+            }
+            else
+            {
+                LOGGER.error("Incorrect changeId '" + changeId + "' or channel " + channelNameToPublish + " for command" + command);
             }
             return true;
         }

@@ -122,5 +122,9 @@ public class PublishMessageJob implements Runnable
             session.sendMessage(fromChannel, "Could not find change id *`" + changeId + "`*, check that the change id is valid and does not correspond to a draft", null, SlackChatConfiguration.getConfiguration().asUser());
             LOGGER.error("Could not publish review for change id " + changeId, e);
         }
+        catch (Throwable t)
+        {
+            LOGGER.error("Unexpected error, could not publish review for change id `" + changeId + "'", t);
+        }
     }
 }

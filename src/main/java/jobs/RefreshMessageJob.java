@@ -2,9 +2,12 @@ package jobs;
 
 import java.io.IOException;
 import java.util.Collection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.ullink.slack.review.gerrit.ChangeInfo;
 import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
+import com.ullink.slack.review.gerrit.ReviewRequestCleanupTask;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequest;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
 import com.ullink.slack.simpleslackapi.ChannelHistoryModule;
@@ -17,6 +20,8 @@ import com.ullink.slack.simpleslackapi.impl.ChannelHistoryModuleFactory;
 
 public class RefreshMessageJob implements Runnable
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RefreshMessageJob.class);
+
     private final String                           changeId;
     private final SlackSession               session;
     private final ReviewRequestService       reviewRequestService;
@@ -56,10 +61,16 @@ public class RefreshMessageJob implements Runnable
                         }
                         session.updateMessage(reviewRequest.getLastRequestTimestamp(), channel, messageContent, new SlackAttachment[] {attachment});
                     }
+                    else
+                    {
+                        LOGGER.warn("Cannot find channel " + reviewRequest.getChannelId() + " for refresh request " + reviewRequest + " with changeId " + reviewRequest.getChangeId());
+                    }
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        }
+        catch (Throwable e)
+        {
+            LOGGER.error("Unexpected error, t");
         }
     }
 }
