@@ -5,6 +5,7 @@ import static commands.RegexConstants.SPACES;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -13,9 +14,11 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
-import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
+import com.slack.api.app_backend.events.payload.EventsApiPayload;
+import com.slack.api.bolt.App;
+import com.slack.api.methods.SlackApiException;
+import com.slack.api.methods.request.chat.ChatPostMessageRequest;
+import com.slack.api.model.event.MessageEvent;
 
 public class HelpCommandProcessor implements SlackBotCommandProcessor
 {
@@ -24,7 +27,7 @@ public class HelpCommandProcessor implements SlackBotCommandProcessor
     private Collection<SlackBotCommandProcessor> commands = Collections.emptyList();
 
     @Override
-    public boolean process(String command, SlackMessagePosted event, SlackSession session)
+    public boolean process(String command, EventsApiPayload<MessageEvent> event, App app)
     {
         Matcher matcher = HELP_PATTERN.matcher(command);
         if (!matcher.matches())
@@ -35,26 +38,27 @@ public class HelpCommandProcessor implements SlackBotCommandProcessor
 
         if (topic == null)
         {
-            sendHelp(event, session, "Here is all I can do for you:"
+            sendHelp(event, app, "Here is all I can do for you:"
                 + lineSeparator()
                 + help(it -> true)
             );
         }
         else if (commands.stream().map(SlackBotCommandProcessor::name).anyMatch(topic::equals))
         {
-            sendHelp(event, session, "Here is what I can do for you on " + topic + ":"
+            sendHelp(event, app, "Here is what I can do for you on " + topic + ":"
                 + lineSeparator()
                 + help(it -> it.name().equals(topic)));
         }
         else
         {
-            sendHelp(event, session, "I cannot do anything on " + topic
+            sendHelp(event, app, "I cannot do anything on " + topic
                 + lineSeparator()
                 + help());
         }
 
         return true;
     }
+
 
     private String help(Predicate<SlackBotCommandProcessor> matchingPredicate)
     {
@@ -68,9 +72,17 @@ public class HelpCommandProcessor implements SlackBotCommandProcessor
             .collect(joining(lineSeparator()));
     }
 
-    private void sendHelp(SlackMessagePosted event, SlackSession session, String message)
+    private void sendHelp(EventsApiPayload<MessageEvent> event, App app, String message)
     {
-        session.sendMessage(event.getChannel(), message, null, SlackChatConfiguration.getConfiguration().asUser());
+        try
+        {
+            app.getClient().chatPostMessage(ChatPostMessageRequest.builder().channel(event.getEvent().getChannel()).text(message).build());
+        }
+        catch (IOException | SlackApiException e)
+        {
+            //throw new RuntimeException(e);
+            //TODO log
+        }
     }
 
     @Override

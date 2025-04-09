@@ -8,18 +8,18 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
-import com.ullink.slack.review.gerrit.GerritChangeInfoService;
-import com.ullink.slack.review.gerrit.ReviewRequestCleanupTask;
-import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
-import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.impl.SlackSessionFactory;
+import com.slack.api.bolt.App;
+import com.slack.api.bolt.AppConfig;
+import com.slack.api.bolt.socket_mode.SocketModeApp;
+
+import com.slack.api.model.event.MessageEvent;
+
 
 public class Connector
 {
     private static final String DEFAULT_PROPERTIES_FILE = "slack4gerrit.properties";
     public static Injector injector = null;
-    private static ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
+    //private static ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(1);
 
     public static void main(String[] args) throws Exception
     {
@@ -34,23 +34,15 @@ public class Connector
             throw new IllegalArgumentException("missing property '" + Constants.CHANGE_INFO_FORMATTER_CLASS + "' in " + DEFAULT_PROPERTIES_FILE);
         }
         injector = Guice.createInjector(new BaseModule(parameters));
-        SlackSession session;
-        if (parameters.containsKey(Constants.PROXY_HOST))
-        {
-            String proxyURL = parameters.getProperty(Constants.PROXY_HOST);
-            int proxyPort = Integer.parseInt(parameters.getProperty(Constants.PROXY_PORT, "80"));
-            session = SlackSessionFactory.getSlackSessionBuilder(parameters.getProperty(Constants.BOT_TOKEN)).withProxy(Proxy.Type.HTTP, proxyURL, proxyPort).withAutoreconnectOnDisconnection(true).build();
-        }
-        else
-        {
-            session = SlackSessionFactory.createWebSocketSlackSession(parameters.getProperty(Constants.BOT_TOKEN));
-        }
-        ReviewRequestService reviewRequestService = Connector.injector.getProvider(ReviewRequestService.class).get();
-        GerritChangeInfoService gerritChangeInfoService = Connector.injector.getProvider(GerritChangeInfoService.class).get();
-        ChangeInfoFormatter gerritChangeDecorator = Connector.injector.getProvider(ChangeInfoFormatter.class).get();
-        session.addMessagePostedListener(new ReviewMessageListener());
-        scheduledExecutor.scheduleAtFixedRate(new ReviewRequestCleanupTask(reviewRequestService, gerritChangeInfoService, gerritChangeDecorator, session, scheduledExecutor), 1, 5, TimeUnit.MINUTES);
-        session.connect();
+        //AppConfig config = AppConfig.builder().singleTeamBotToken(parameters.getProperty(Constants.APP_TOKEN)).build();
+        App app = new App();
+        //ReviewRequestService reviewRequestService = Connector.injector.getProvider(ReviewRequestService.class).get();
+        //GerritChangeInfoService gerritChangeInfoService = Connector.injector.getProvider(GerritChangeInfoService.class).get();
+        //ChangeInfoFormatter gerritChangeDecorator = Connector.injector.getProvider(ChangeInfoFormatter.class).get();
+        //scheduledExecutor.scheduleAtFixedRate(new ReviewRequestCleanupTask(reviewRequestService, gerritChangeInfoService, gerritChangeDecorator, session, scheduledExecutor), 1, 5, TimeUnit.MINUTES);
+        app.event(MessageEvent.class, new ReviewMessageListener(app));
+        SocketModeApp socketModeApp = new SocketModeApp(app);
+        socketModeApp.start();
 
         Thread.sleep(Long.MAX_VALUE);
     }

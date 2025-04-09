@@ -10,12 +10,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import com.slack.api.app_backend.events.payload.EventsApiPayload;
+import com.slack.api.bolt.App;
+import com.slack.api.methods.SlackApiException;
+import com.slack.api.methods.request.chat.ChatPostMessageRequest;
+import com.slack.api.model.event.MessageEvent;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.subscription.SubscriptionService;
-import com.ullink.slack.simpleslackapi.SlackChannel;
-import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
-import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 
 @Singleton
 public class UnsubscribeProjectCommandProcessor implements SlackBotCommandProcessor
@@ -31,14 +32,14 @@ public class UnsubscribeProjectCommandProcessor implements SlackBotCommandProces
     private static Pattern UNSUBSCRIBE_REVIEW_PROJECT_PATTERN = Pattern.compile(COMMAND + SPACES + "(" + PROJECT + ")" + ANYTHING_ELSE);
 
     @Override
-    public boolean process(String command, SlackMessagePosted event, SlackSession session)
+    public boolean process(String command, EventsApiPayload<MessageEvent> event, App app)
     {
         Matcher matcher = UNSUBSCRIBE_REVIEW_PROJECT_PATTERN.matcher(command);
         if (matcher.matches())
         {
             String projectId = matcher.group(1);
-            SlackChannel channel = event.getChannel();
-            executor.execute(new UnsubscriptionMessageHandler(channel, projectId, session));
+            String channelId = event.getEvent().getChannel();
+            executor.execute(new UnsubscriptionMessageHandler(channelId, projectId, app));
             return true;
         }
         return false;
@@ -65,15 +66,15 @@ public class UnsubscribeProjectCommandProcessor implements SlackBotCommandProces
     private class UnsubscriptionMessageHandler implements Runnable
     {
 
-        SlackChannel channelToSubscribe;
+        String channelIdToSubscribe;
         String projectId;
-        SlackSession session;
+        App app;
 
-        public UnsubscriptionMessageHandler(SlackChannel channelToSubscribe, String projectId, SlackSession session)
+        public UnsubscriptionMessageHandler(String channelIdToSubscribe, String projectId, App app)
         {
-            this.channelToSubscribe = channelToSubscribe;
+            this.channelIdToSubscribe = channelIdToSubscribe;
             this.projectId = projectId;
-            this.session = session;
+            this.app = app;
         }
 
         @Override
@@ -83,16 +84,21 @@ public class UnsubscribeProjectCommandProcessor implements SlackBotCommandProces
             {
                 if (!gerritChangeInfoService.projectExists(projectId))
                 {
-                    session.sendMessage(channelToSubscribe, "Could not find project name *`" + projectId + "`*, check that this project name is valid and that it is active", null, SlackChatConfiguration.getConfiguration().asUser());
+                    app.getClient().chatPostMessage(ChatPostMessageRequest.builder().channel(channelIdToSubscribe).text("Could not find project name *`" + projectId + "`*, check that this project name is valid and that it is active").build());
                     return;
                 }
-                subscriptionService.unsubscribeOnProject(projectId, channelToSubscribe.getId());
-                session.sendMessage(channelToSubscribe, "This channel will not publish any more review requests from project *`" + projectId + "`*", null, SlackChatConfiguration.getConfiguration().asUser());
+                subscriptionService.unsubscribeOnProject(projectId, channelIdToSubscribe);
+                app.getClient().chatPostMessage(ChatPostMessageRequest.builder().channel(channelIdToSubscribe).text("This channel will not publish any more review requests from project *`" + projectId + "`*").build());
             }
             catch (IOException e)
             {
-                session.sendMessage(channelToSubscribe, "Too bad, an unexpected error occurred...", null, SlackChatConfiguration.getConfiguration().asUser());
+                //session.sendMessage(channelIdToSubscribe, "Too bad, an unexpected error occurred...", null, SlackChatConfiguration.getConfiguration().asUser());
                 e.printStackTrace();
+            }
+            catch (SlackApiException e)
+            {
+                //throw new RuntimeException(e);
+                //TODO log
             }
         }
     }

@@ -1,5 +1,6 @@
 package com.ullink.slack.review.gerrit;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumMap;
@@ -10,11 +11,15 @@ import java.util.Properties;
 
 import com.google.common.base.Strings;
 import com.google.common.html.HtmlEscapers;
+import com.slack.api.bolt.App;
+import com.slack.api.methods.SlackApiException;
+import com.slack.api.methods.request.users.UsersLookupByEmailRequest;
+import com.slack.api.methods.response.users.UsersLookupByEmailResponse;
+import com.slack.api.model.Attachment;
+import com.slack.api.model.Field;
+import com.slack.api.model.User;
 import com.ullink.slack.review.Constants;
 import com.ullink.slack.review.gerrit.ChangeInfo.IssuePriority;
-import com.ullink.slack.simpleslackapi.SlackAttachment;
-import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.SlackUser;
 
 public class DefaultChangeInfoFormatter implements ChangeInfoFormatter
 {
@@ -29,25 +34,34 @@ public class DefaultChangeInfoFormatter implements ChangeInfoFormatter
     }
 
     @Override
-    public SlackAttachment createAttachment(String changeId, ChangeInfo changeInfo, SlackSession session)
+    public Attachment createAttachment(String changeId, ChangeInfo changeInfo, App app)
     {
-        SlackAttachment attachment = new SlackAttachment();
-        attachment.addMarkdownIn("fields");
-        attachment.addMarkdownIn("pretext");
         String subject = HtmlEscapers.htmlEscaper().escape(changeInfo.getSubject());
-        String pretext = "*<" + gerritURL + changeId + "/" + "|" + subject + " (#" + changeId + ")>* *owner :* " + formatOwnerInfo(changeInfo, session);
+        String pretext = "*<" + gerritURL + changeId + "/" + "|" + subject + " (#" + changeId + ")>* *owner :* " + formatOwnerInfo(changeInfo, app);
         if (changeInfo.getCherryPickedFrom() != null)
         {
             pretext += " *Cherry picked from :* *<" + gerritURL + changeInfo.getCherryPickedFrom() + "/" + "| #" + changeInfo.getCherryPickedFrom() + ">*";
         }
-        attachment.setPretext(pretext);
-        attachment.addField(null, formatProjectInfo(changeInfo) + " " + formatLastUpdatedInfo(changeInfo), false);
+        List<Field> fields = new ArrayList<>();
+        fields.add(Field.builder()
+            .value(formatProjectInfo(changeInfo) + " " + formatLastUpdatedInfo(changeInfo))
+            .valueShortEnough(false)
+            .build());
         String issuesDescription = formatRelatedIssues(changeInfo);
         if (issuesDescription != null)
         {
-            attachment.addField(null, issuesDescription, true);
+            fields.add(Field.builder()
+                .value(issuesDescription)
+                .valueShortEnough(true)
+                .build());
         }
-        return attachment;
+        List<String> markdownIn = new ArrayList<>();
+        markdownIn.add("fields");
+        markdownIn.add("pretext");
+        return Attachment.builder()
+            .mrkdwnIn(markdownIn)
+            .pretext(pretext)
+            .fields(fields).build();
     }
 
     protected String formatRelatedIssues(ChangeInfo changeInfo)
@@ -96,9 +110,9 @@ public class DefaultChangeInfoFormatter implements ChangeInfoFormatter
         }
     }
 
-    protected String displayUser(SlackUser user)
+    protected String displayUser(User user)
     {
-        String realName = user.getUserName();
+        String realName = user.getRealName();
         if (realName == null || realName.isEmpty())
         {
             return "<@" + user.getId() + ">";
@@ -106,19 +120,32 @@ public class DefaultChangeInfoFormatter implements ChangeInfoFormatter
         return realName + " (<@" + user.getId() + ">)";
     }
 
-    protected String formatOwnerInfo(ChangeInfo changeInfo, SlackSession session)
+    protected String formatOwnerInfo(ChangeInfo changeInfo, App app)
     {
-        return "`" + displayUser(session, changeInfo.getOwnerEmail(), changeInfo.getOwner()) + "`";
+        return "`" + displayUser(app, changeInfo.getOwnerEmail(), changeInfo.getOwner()) + "`";
     }
 
-    protected String displayUser(SlackSession session, String email, String name)
+    protected String displayUser(App app, String email, String name)
     {
-        SlackUser user = session.findUserByEmail(email);
-        if (user == null)
+        UsersLookupByEmailRequest request = UsersLookupByEmailRequest.builder()
+            .email(email)
+            .build();
+        try
         {
+            UsersLookupByEmailResponse response = app.client().usersLookupByEmail(request);
+            User user = response.getUser();
+            if (user == null)
+            {
+                return name;
+            }
+            return displayUser(user);
+        }
+        catch (IOException | SlackApiException e)
+        {
+            //TODO
+            //throw new RuntimeException(e);
             return name;
         }
-        return displayUser(user);
     }
 
     protected String formatProjectInfo(ChangeInfo changeInfo)
@@ -172,5 +199,4 @@ public class DefaultChangeInfoFormatter implements ChangeInfoFormatter
             return nbDaysFromNow + " days ago";
         }
     }
-
 }

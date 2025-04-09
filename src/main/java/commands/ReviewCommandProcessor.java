@@ -13,12 +13,13 @@ import java.util.stream.Stream;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import jobs.PublishMessageJob;
+import com.slack.api.app_backend.events.payload.EventsApiPayload;
+import com.slack.api.bolt.App;
+import com.slack.api.model.event.MessageEvent;
 import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
 import com.ullink.slack.review.subscription.SubscriptionService;
-import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 
 @Singleton
 public class ReviewCommandProcessor implements SlackBotCommandProcessor
@@ -40,7 +41,7 @@ public class ReviewCommandProcessor implements SlackBotCommandProcessor
         + "(" + SPACES + "(" + COMMENT + "))?");
 
     @Override
-    public boolean process(String command, SlackMessagePosted event, SlackSession session)
+    public boolean process(String command, EventsApiPayload<MessageEvent> event, App app)
     {
         Matcher matcher = REVIEW_PATTERN.matcher(command);
         if (matcher.matches())
@@ -49,7 +50,7 @@ public class ReviewCommandProcessor implements SlackBotCommandProcessor
             String comment = matcher.group(4);
             for (int i = 0; i < changeIds.length; i++)
             {
-                executor.execute(new PublishMessageJob(event.getChannel(), changeIds[i].trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
+                executor.execute(new PublishMessageJob(event.getEvent().getChannel(), changeIds[i].trim(), comment, app, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
             }
             return true;
         }

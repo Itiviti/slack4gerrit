@@ -14,13 +14,14 @@ import java.util.stream.Stream;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import jobs.PublishMessageJob;
+import com.slack.api.app_backend.events.payload.EventsApiPayload;
+import com.slack.api.bolt.App;
+import com.slack.api.methods.request.conversations.ConversationsListRequest;
+import com.slack.api.model.event.MessageEvent;
 import com.ullink.slack.review.gerrit.ChangeInfoFormatter;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService;
 import com.ullink.slack.review.subscription.SubscriptionService;
-import com.ullink.slack.simpleslackapi.SlackChannel;
-import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 
 @Singleton
 public class PublishReviewCommandProcessor implements SlackBotCommandProcessor
@@ -47,7 +48,7 @@ public class PublishReviewCommandProcessor implements SlackBotCommandProcessor
     }
 
     @Override
-    public boolean process(String command, SlackMessagePosted event, SlackSession session)
+    public boolean process(String command, EventsApiPayload<MessageEvent> event, App app)
     {
         Matcher matcher = PUBLISH_REVIEW_PATTERN.matcher(command);
         if (matcher.matches())
@@ -55,11 +56,15 @@ public class PublishReviewCommandProcessor implements SlackBotCommandProcessor
             String channelNameToPublish = matcher.group(1);
             String changeId = matcher.group(2);
             String comment = matcher.group(4);
-            SlackChannel channel = session.findChannelByName(channelNameToPublish);
+
+            //TODO: find a way to retrieve channel by name
+            /*
+            SlackChannel channel = app.getClient().conversationsList(ConversationsListRequest.builder().excludeArchived(true).teamId(event.getTeamId()).build()) session.findChannelByName(channelNameToPublish);
             if (channel != null)
             {
                 executor.execute(new PublishMessageJob(channelNameToPublish, event.getChannel(), changeId.trim(), comment, session, reviewRequestService, subscriptionService, gerritChangeInfoService, changeInfoDecorator));
             }
+             */
             return true;
         }
         return false;

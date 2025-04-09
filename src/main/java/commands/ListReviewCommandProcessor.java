@@ -1,14 +1,17 @@
 package commands;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import com.slack.api.app_backend.events.payload.EventsApiPayload;
+import com.slack.api.bolt.App;
+import com.slack.api.methods.SlackApiException;
+import com.slack.api.methods.request.chat.ChatPostMessageRequest;
+import com.slack.api.model.event.MessageEvent;
 import com.ullink.slack.review.subscription.SubscriptionService;
-import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
-import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 
 @Singleton
 public class ListReviewCommandProcessor implements SlackBotCommandProcessor
@@ -21,13 +24,21 @@ public class ListReviewCommandProcessor implements SlackBotCommandProcessor
     private static Pattern LIST_REVIEW_PATTERN = Pattern.compile(COMMAND);
 
     @Override
-    public boolean process(String command, SlackMessagePosted event, SlackSession session)
+    public boolean process(String command, EventsApiPayload<MessageEvent> event, App app)
     {
         Matcher matcher = LIST_REVIEW_PATTERN.matcher(command);
         if (matcher.matches())
         {
-            Collection<String> projects = subscriptionService.getChannelSubscriptions(event.getChannel().getId());
-            session.sendMessage(event.getChannel(), "This channel is listening to *`" + projects + "`*", null, SlackChatConfiguration.getConfiguration().asUser());
+            Collection<String> projects = subscriptionService.getChannelSubscriptions(event.getEvent().getChannel());
+            try
+            {
+                app.getClient().chatPostMessage(ChatPostMessageRequest.builder().channel(event.getEvent().getChannel()).text("This channel is listening to *`" + projects + "`*").build());
+            }
+            catch (IOException | SlackApiException e)
+            {
+                //throw new RuntimeException(e);
+                //TODO handle exception
+            }
             return true;
         }
         return false;

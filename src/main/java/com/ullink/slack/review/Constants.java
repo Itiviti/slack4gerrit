@@ -8,7 +8,8 @@ public interface Constants
     String JIRA_USER     = "jiraUser";
     String JIRA_PASSWORD = "jiraPassword";
     String CHANGE_INFO_FORMATTER_CLASS = "changeInfoFormatterClass";
-    String BOT_TOKEN = "botToken";
+    String BOT_TOKEN = "oauthToken";
+    String APP_TOKEN = "appLevelToken";
     String PROXY_HOST = "proxyHost";
     String PROXY_PORT = "proxyPort";
 }

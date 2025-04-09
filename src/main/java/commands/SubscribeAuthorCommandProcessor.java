@@ -10,12 +10,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import com.slack.api.app_backend.events.payload.EventsApiPayload;
+import com.slack.api.bolt.App;
+import com.slack.api.methods.SlackApiException;
+import com.slack.api.methods.request.chat.ChatPostMessageRequest;
+import com.slack.api.model.event.MessageEvent;
 import com.ullink.slack.review.gerrit.GerritChangeInfoService;
 import com.ullink.slack.review.subscription.SubscriptionService;
-import com.ullink.slack.simpleslackapi.SlackChannel;
-import com.ullink.slack.simpleslackapi.SlackChatConfiguration;
-import com.ullink.slack.simpleslackapi.SlackSession;
-import com.ullink.slack.simpleslackapi.events.SlackMessagePosted;
 
 @Singleton
 public class SubscribeAuthorCommandProcessor implements SlackBotCommandProcessor
@@ -32,14 +33,13 @@ public class SubscribeAuthorCommandProcessor implements SlackBotCommandProcessor
     private static Pattern SUBSCRIBE_REVIEW_AUTHOR_PATTERN = Pattern.compile(COMMAND + SPACES + "(" + USER_ALIAS + ")" + ANYTHING_ELSE);
 
     @Override
-    public boolean process(String command, SlackMessagePosted event, SlackSession session)
+    public boolean process(String command, EventsApiPayload<MessageEvent> event, App app)
     {
         Matcher matcher = SUBSCRIBE_REVIEW_AUTHOR_PATTERN.matcher(command);
         if (matcher.matches())
         {
             String userId = matcher.group(1);
-            SlackChannel channel = event.getChannel();
-            executor.execute(new SubscriptionMessageHandler(channel, userId, session));
+            executor.execute(new SubscriptionMessageHandler(event.getEvent().getChannel(), userId, app));
             return true;
         }
         return false;
@@ -65,15 +65,15 @@ public class SubscribeAuthorCommandProcessor implements SlackBotCommandProcessor
 
     private class SubscriptionMessageHandler implements Runnable
     {
-        SlackChannel channelToSubscribe;
+        String channelIdToSubscribe;
         String userId;
-        SlackSession session;
+        App app;
 
-        public SubscriptionMessageHandler(SlackChannel channelToSubscribe, String userId, SlackSession session)
+        public SubscriptionMessageHandler(String channelIdToSubscribe, String userId, App app)
         {
-            this.channelToSubscribe = channelToSubscribe;
+            this.channelIdToSubscribe = channelIdToSubscribe;
             this.userId = userId;
-            this.session = session;
+            this.app = app;
         }
 
         @Override
@@ -83,16 +83,21 @@ public class SubscribeAuthorCommandProcessor implements SlackBotCommandProcessor
             {
                 if (!gerritChangeInfoService.userExists(userId))
                 {
-                    session.sendMessage(channelToSubscribe, "Could not find user name *`" + userId + "`*, check that this user exists, is valid and active", null, SlackChatConfiguration.getConfiguration().asUser());
+                    app.getClient().chatPostMessage(ChatPostMessageRequest.builder().channel(channelIdToSubscribe).text("Could not find user name *`" + userId + "`*, check that this user exists, is valid and active").build());
                     return;
                 }
-                subscriptionService.subscribeOnUser(userId, channelToSubscribe.getId());
-                session.sendMessage(channelToSubscribe, "This channel will now publish review requests from user *`" + userId + "`*", null, SlackChatConfiguration.getConfiguration().asUser());
+                subscriptionService.subscribeOnUser(userId, channelIdToSubscribe);
+                app.getClient().chatPostMessage(ChatPostMessageRequest.builder().channel(channelIdToSubscribe).text("This channel will now publish review requests from user *`" + userId + "`*").build());
             }
             catch (IOException e)
             {
-                session.sendMessage(channelToSubscribe, "Too bad, an unexpected error occurred...", null, SlackChatConfiguration.getConfiguration().asUser());
+                //session.sendMessage(channelIdToSubscribe, "Too bad, an unexpected error occurred...", null, SlackChatConfiguration.getConfiguration().asUser());
                 e.printStackTrace();
+            }
+            catch (SlackApiException e)
+            {
+                //throw new RuntimeException(e);
+                //TODO log
             }
         }
     }
