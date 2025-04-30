@@ -11,9 +11,11 @@
  *************************************************************************/
 package commands
 
-import com.ullink.slack.simpleslackapi.SlackChannel
-import com.ullink.slack.simpleslackapi.SlackSession
-import com.ullink.slack.simpleslackapi.events.SlackMessagePosted
+import com.slack.api.app_backend.events.payload.EventsApiPayload
+import com.slack.api.bolt.App
+import com.slack.api.methods.MethodsClient
+import com.slack.api.methods.request.chat.ChatPostMessageRequest
+import com.slack.api.model.event.MessageEvent
 import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Subject
@@ -24,8 +26,11 @@ class HelpSpec extends Specification {
 
     @Shared
     def processor = new SlackBotCommandProcessor() {
+
         @Override
-        boolean process(String command, SlackMessagePosted event, SlackSession session) { false }
+        boolean process(String command, EventsApiPayload<MessageEvent> event, App app) {
+            return false
+        }
 
         @Override
         String name() { 'command' }
@@ -44,26 +49,27 @@ class HelpSpec extends Specification {
     def "with #availableCommands, '#command' answer will contain '#expected' and not '#unexpected'"() {
         def actualArgs
         given:
-        def channel = Mock(SlackChannel)//new SlackChannel('channel', 'name', 'topic', 'purpose', false, true, false)
-
-        def session = Mock(SlackSession)
-        def event = Mock(SlackMessagePosted) {
-            _ * it.getChannel() >> channel
-        }
+        def channelName = 'channel'
+        def event = Mock(EventsApiPayload)
+        def messageEvent = Mock(MessageEvent)
+        messageEvent.getChannel() >> channelName
+        event.getEvent() >> messageEvent
+        def session = Mock(App)
+        session.getClient() >> Mock(MethodsClient)
 
         help.setCommands(availableCommands)
 
         when:
         help.process(command, event, session)
         then:
-        _ * session.sendMessage(*_) >> { args ->
+        _ * session.getClient().chatPostMessage(*_) >> { args ->
             actualArgs = args
             return null
         }
-        def message = actualArgs[1] as String
-        actualArgs[0] == channel
-        message.contains(expected)
-        !message.contains(unexpected)
+        def messageReq = actualArgs[0] as ChatPostMessageRequest
+        messageReq.channel == channelName
+        messageReq.text.contains(expected)
+        !messageReq.text.contains(unexpected)
 
         where:
         availableCommands | command                     | expected            | unexpected

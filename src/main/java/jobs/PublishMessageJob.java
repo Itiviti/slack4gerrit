@@ -1,9 +1,14 @@
 package jobs;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
+
+import com.slack.api.methods.request.conversations.ConversationsListRequest;
+import com.slack.api.methods.request.users.UsersConversationsRequest;
+import com.slack.api.methods.response.conversations.ConversationsListResponse;
+import com.slack.api.methods.response.users.UsersConversationsResponse;
+import com.slack.api.model.Conversation;
+import com.slack.api.model.ConversationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.slack.api.bolt.App;
@@ -25,14 +30,14 @@ public class PublishMessageJob implements Runnable
 
     private String fromChannelId;
     private String targetChannelId;
-    private String                           targetChannelName;
-    private String                           changeId;
-    private String                           comment = "";
+    private String targetChannelName;
+    private String changeId;
+    private String comment = "";
     private final App app;
-    private final ReviewRequestService       reviewRequestService;
+    private final ReviewRequestService reviewRequestService;
     private final SubscriptionService subscriptionService;
-    private final GerritChangeInfoService    gerritChangeInfoService;
-    private final ChangeInfoFormatter        changeInfoDecorator;
+    private final GerritChangeInfoService gerritChangeInfoService;
+    private final ChangeInfoFormatter changeInfoDecorator;
 
     public PublishMessageJob(String fromChannelId, String changeId, String comment, App app, ReviewRequestService reviewRequestService, SubscriptionService subscriptionService,
         GerritChangeInfoService gerritChangeInfoService, ChangeInfoFormatter changeInfoDecorator)
@@ -69,9 +74,28 @@ public class PublishMessageJob implements Runnable
         {
             if (targetChannelId == null)
             {
-                //TODO: find a way to retrieve channel by name
-                //targetChannelId = app.findChannelByName(targetChannelName);
+                UsersConversationsResponse conversationsResponse = app.client().usersConversations(UsersConversationsRequest.builder()
+                        .excludeArchived(true)
+                        .types(Arrays.asList(ConversationType.PUBLIC_CHANNEL, ConversationType.PRIVATE_CHANNEL))
+                        .limit(1000)
+                        .build());
+
+                if (!conversationsResponse.isOk()) {
+                    LOGGER.error("Channels list is not valid. Error: {}", conversationsResponse.getError());
+                }
+
+                Optional<Conversation> channelOpt = conversationsResponse.getChannels().stream()
+                        .filter(channel -> channel.getName().equals(targetChannelName))
+                        .findFirst();
+
+                if (!channelOpt.isPresent()) {
+                    LOGGER.error("Channel to publish '{}' was not found in the list of channels.", targetChannelName);
+                    return;
+                }
+
+                targetChannelId = channelOpt.get().getId();
             }
+
             if (targetChannelId == null)
             {
                 try
@@ -143,6 +167,9 @@ public class PublishMessageJob implements Runnable
                 LOGGER.error("Slack API error: ", ex);
             }
             LOGGER.error("Could not publish review for change id " + changeId, e);
+
+        } catch (SlackApiException e) {
+            LOGGER.error("Exception raised when trying to retrieve channels list.", e);
         }
     }
 }

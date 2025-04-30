@@ -48,6 +48,8 @@ public class BaseModule extends AbstractModule
         bind(String.class).annotatedWith(Names.named(Constants.JIRA_URL)).toInstance(properties.getProperty(Constants.JIRA_URL));
         bind(String.class).annotatedWith(Names.named(Constants.JIRA_USER)).toInstance(properties.getProperty(Constants.JIRA_USER));
         bind(String.class).annotatedWith(Names.named(Constants.JIRA_PASSWORD)).toInstance(properties.getProperty(Constants.JIRA_PASSWORD));
+        bind(String.class).annotatedWith(Names.named(Constants.BOT_TOKEN)).toInstance(properties.getProperty(Constants.BOT_TOKEN));
+        bind(String.class).annotatedWith(Names.named(Constants.APP_TOKEN)).toInstance(properties.getProperty(Constants.APP_TOKEN));
         bind(ReviewRequestService.class).to(ReviewRequestServiceImpl.class);
         bind(SubscriptionService.class).to(SubscriptionImpl.class);
         bind(ExecutorService.class).toInstance(Executors.newFixedThreadPool(8));

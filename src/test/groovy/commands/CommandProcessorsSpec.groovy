@@ -11,12 +11,15 @@
  *************************************************************************/
 package commands
 
+import com.slack.api.app_backend.events.payload.EventsApiPayload
+import com.slack.api.bolt.App
+import com.slack.api.methods.MethodsClient
+import com.slack.api.model.Channel
+import com.slack.api.model.event.MessageEvent
 import com.ullink.slack.review.gerrit.ChangeInfoFormatter
 import com.ullink.slack.review.gerrit.GerritChangeInfoService
 import com.ullink.slack.review.gerrit.reviewrequests.ReviewRequestService
 import com.ullink.slack.review.subscription.SubscriptionService
-import com.ullink.slack.simpleslackapi.SlackSession
-import com.ullink.slack.simpleslackapi.events.SlackMessagePosted
 import spock.lang.Specification
 import spock.lang.Subject
 import spock.lang.Unroll
@@ -43,11 +46,14 @@ class CommandProcessorsSpec extends Specification {
             new UnsubscribeProjectCommandProcessor(executor: executor, subscriptionService: subscriptionService, gerritChangeInfoService: gerritChangeInfoService)
     ]
 
-
     def "command '#command' should be processed by #expectedProcessors"() {
         given:
-        def event = Mock(SlackMessagePosted)
-        def session = Mock(SlackSession)
+        def event = Mock(EventsApiPayload)
+        def messageEvent = Mock(MessageEvent)
+        messageEvent.getChannel() >> Mock(Channel)
+        event.getEvent() >> messageEvent
+        def session = Mock(App)
+        session.getClient() >> Mock(MethodsClient)
 
         when:
         def processors = commandProcessors.findAll { it.process(command, event, session) }.collect { it.class }
@@ -56,22 +62,23 @@ class CommandProcessorsSpec extends Specification {
         processors as Set == expectedProcessors as Set
 
         where:
-        command                        | expectedProcessors
-        ''                             | []
-        'not a command'                | []
-        '!help'                        | [HelpCommandProcessor]
-        '!help topic'                  | [HelpCommandProcessor]
-        '!review'                      | []
-        '!review comment'              | []
-        '!review 12345 comment'        | [ReviewCommandProcessor]
-        '!review 12345 123456'         | [ReviewCommandProcessor]
-        '!review 12345 123456 comment' | [ReviewCommandProcessor]
-        '!review 12345 123456 comment' | [ReviewCommandProcessor]
-        '!subscribereview'             | []
-        '!subscribereview something'   | [SubscribeProjectCommandProcessor]
-        '!subscribereview @user'       | [SubscribeAuthorCommandProcessor]
-        '!unsubscribereview'           | []
-        '!unsubscribereview something' | [UnsubscribeProjectCommandProcessor]
-        '!unsubscribereview @user'     | [UnsubscribeAuthorCommandProcessor]
+        command                                 | expectedProcessors
+        ''                                      | []
+        'not a command'                         | []
+        '!help'                                 | [HelpCommandProcessor]
+        '!help topic'                           | [HelpCommandProcessor]
+        '!review'                               | []
+        '!review comment'                       | []
+        '!review 12345 comment'                 | [ReviewCommandProcessor]
+        '!review 12345 123456'                  | [ReviewCommandProcessor]
+        '!review 12345 123456 comment'          | [ReviewCommandProcessor]
+        '!review 12345 123456 comment'          | [ReviewCommandProcessor]
+        '!publishreview 12 123 1234 comment'    | [PublishReviewCommandProcessor]
+        '!subscribereview'                      | []
+        '!subscribereview something'            | [SubscribeProjectCommandProcessor]
+        '!subscribereview @user'                | [SubscribeAuthorCommandProcessor]
+        '!unsubscribereview'                    | []
+        '!unsubscribereview something'          | [UnsubscribeProjectCommandProcessor]
+        '!unsubscribereview @user'              | [UnsubscribeAuthorCommandProcessor]
     }
 }
