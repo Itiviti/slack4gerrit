@@ -34,14 +34,14 @@ public class Connector
             throw new IllegalArgumentException("missing property '" + Constants.CHANGE_INFO_FORMATTER_CLASS + "' in " + DEFAULT_PROPERTIES_FILE);
         }
         injector = Guice.createInjector(new BaseModule(parameters));
-        //AppConfig config = AppConfig.builder().singleTeamBotToken(parameters.getProperty(Constants.APP_TOKEN)).build();
-        App app = new App();
+        AppConfig config = AppConfig.builder().singleTeamBotToken(parameters.getProperty(Constants.BOT_TOKEN)).build();
+        App app = new App(config);
         //ReviewRequestService reviewRequestService = Connector.injector.getProvider(ReviewRequestService.class).get();
         //GerritChangeInfoService gerritChangeInfoService = Connector.injector.getProvider(GerritChangeInfoService.class).get();
         //ChangeInfoFormatter gerritChangeDecorator = Connector.injector.getProvider(ChangeInfoFormatter.class).get();
         //scheduledExecutor.scheduleAtFixedRate(new ReviewRequestCleanupTask(reviewRequestService, gerritChangeInfoService, gerritChangeDecorator, session, scheduledExecutor), 1, 5, TimeUnit.MINUTES);
         app.event(MessageEvent.class, new ReviewMessageListener(app));
-        SocketModeApp socketModeApp = new SocketModeApp(app);
+        SocketModeApp socketModeApp = new SocketModeApp(parameters.getProperty(Constants.APP_TOKEN), app);
         socketModeApp.start();
 
         Thread.sleep(Long.MAX_VALUE);
